@@ -1,0 +1,9 @@
+name: atmoresponse
+dependencies:
+  - python=3.12
+  - pip
+  - geopandas>=0.14
+  - rasterio>=1.3
+  - shapely>=2.0
+  - pip:
+      - -e .[test,live,geo]

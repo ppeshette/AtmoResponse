@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+build/
+dist/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Local data and generated outputs
+.env
+.env.*
+data/
+cache/
+outputs/
+figures/generated/
+*.nc
+*.h5
+*.hdf
+*.tif
+*.tiff
+*.npz
+
+# Credentials
+.netrc
+_netrc
+*.pem
+*.key
+secrets.*
+

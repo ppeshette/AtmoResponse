@@ -1,0 +1,58 @@
+# AtmoResponse
+
+AtmoResponse traces atmospheric-correction assumptions into Tanager reflectance algorithms.
+
+The repository is the public project package for the Planet Tanager Open Data Competition
+submission. It is being assembled as a release artifact: source code, report files, an annotated
+notebook, and lightweight reproducibility assets belong here. Scene data, bulky derived products,
+local caches, and credentials do not.
+
+## Repository Layout
+
+| Path | Purpose |
+|---|---|
+| `src/atmoresponse/` | Installable Python package |
+| `src/atmoresponse/recipes/` | Published algorithm examples used by the submission |
+| `tests/` | Offline smoke tests and formula fixtures |
+| `notebooks/` | Annotated executable walkthrough |
+| `report/` | Memo, method notes, acquisition targets, and figure captions |
+| `reproducibility_assets/` | Small manifests and source assets needed to rebuild examples |
+| `examples/` | Small runnable entry points and configuration examples |
+
+## Install
+
+Create the clean conda environment:
+
+```bash
+conda env create -f environment.yml
+conda activate atmoresponse
+```
+
+Install the package:
+
+```bash
+python -m pip install .
+```
+
+Development checks use:
+
+```bash
+python -m pip install -e ".[test,live,geo]"
+python -m pytest
+```
+
+## Data Access
+
+Default examples should run against public Planet STAC metadata and public Tanager scene assets.
+Some external aerosol references require user-owned credentials. Credentialed paths must fail with
+readable setup messages when credentials are absent.
+
+AtmoResponse uses a cache-first workflow. Set `ATMORESPONSE_CACHE` to choose the local cache
+location. If the variable is unset, the package uses a platform cache directory under the current
+user profile.
+
+## Current Scaffold
+
+This first scaffold defines the public import boundary before the private implementation is curated
+into the package. Live catalog access, external aerosol lookup, LUT storage, and full sensitivity
+evaluation are named but not yet implemented.
