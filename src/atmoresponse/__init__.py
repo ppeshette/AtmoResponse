@@ -3,7 +3,7 @@
 from ._version import __version__
 from .aod import AodEstimate, AodQuery, AodSource, resolve_aod
 from .cache import CacheConfig
-from .catalog import SceneAssets, SceneQuery, SceneRecord, get_scene_assets, search_scenes
+from .catalog import SceneAssets, SceneQuery, SceneRecord, build_index, get_scene_assets, search_scenes
 from .lut import CorrectionCoefficients, reflectance_from_radiance, radiance_from_reflectance
 from .sensitivity import Algorithm, LabeledScore, SensitivityResult, evaluate_sensitivity
 
@@ -20,6 +20,7 @@ __all__ = [
     "SceneQuery",
     "SceneRecord",
     "SensitivityResult",
+    "build_index",
     "evaluate_sensitivity",
     "get_scene_assets",
     "radiance_from_reflectance",
@@ -27,4 +28,3 @@ __all__ = [
     "resolve_aod",
     "search_scenes",
 ]
-

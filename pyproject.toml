@@ -22,7 +22,10 @@ classifiers = [
   "Topic :: Scientific/Engineering :: GIS",
 ]
 dependencies = [
+  "geopandas>=0.14",
   "numpy>=1.26",
+  "requests>=2.31",
+  "shapely>=2.0",
 ]
 
 [project.optional-dependencies]
@@ -42,4 +45,3 @@ test = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
-

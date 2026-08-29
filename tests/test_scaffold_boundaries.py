@@ -6,9 +6,7 @@ from atmoresponse import (
     AodQuery,
     CacheConfig,
     SceneQuery,
-    get_scene_assets,
     resolve_aod,
-    search_scenes,
 )
 
 
@@ -28,14 +26,8 @@ def test_cache_env_override(monkeypatch, tmp_path):
     assert cache.root == tmp_path
 
 
-def test_live_boundaries_are_explicit_placeholders():
-    scene_query = SceneQuery(start=dt.datetime(2025, 1, 1), end=dt.datetime(2025, 1, 2))
+def test_aod_boundary_is_explicit_placeholder():
     aod_query = AodQuery(latitude=34.0, longitude=-118.0, when=dt.datetime(2025, 1, 1))
 
-    with pytest.raises(NotImplementedError, match="STAC search"):
-        search_scenes(scene_query)
     with pytest.raises(NotImplementedError, match="AOD resolution"):
         resolve_aod(aod_query)
-    with pytest.raises(NotImplementedError, match="asset resolution"):
-        get_scene_assets(None)
-

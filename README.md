@@ -47,6 +47,9 @@ Default examples should run against public Planet STAC metadata and public Tanag
 Some external aerosol references require user-owned credentials. Credentialed paths must fail with
 readable setup messages when credentials are absent.
 
+AtmoResponse walks Planet's static Tanager STAC catalog directly. It does not require a STAC API
+server for catalog search.
+
 AtmoResponse uses a cache-first workflow. Set `ATMORESPONSE_CACHE` to choose the local cache
 location. If the variable is unset, the package uses a platform cache directory under the current
 user profile.
@@ -54,5 +57,6 @@ user profile.
 ## Current Scaffold
 
 This first scaffold defines the public import boundary before the private implementation is curated
-into the package. Live catalog access, external aerosol lookup, LUT storage, and full sensitivity
-evaluation are named but not yet implemented.
+into the package. Tanager catalog search and scene asset resolution are implemented. External
+aerosol lookup, LUT storage, HDF5 extraction, and full sensitivity evaluation are named but not yet
+implemented.

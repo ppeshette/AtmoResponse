@@ -13,6 +13,7 @@ def test_public_api_exports_scaffolded_boundary():
         "SceneQuery",
         "SceneRecord",
         "SensitivityResult",
+        "build_index",
         "evaluate_sensitivity",
         "get_scene_assets",
         "radiance_from_reflectance",
@@ -26,4 +27,3 @@ def test_public_api_exports_scaffolded_boundary():
 
 def test_package_has_version():
     assert atmoresponse.__version__
-
