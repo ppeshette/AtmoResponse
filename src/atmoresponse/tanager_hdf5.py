@@ -1,4 +1,4 @@
-"""Shared HDF5 extraction utilities for Tanager ortho SR and radiance scenes."""
+"""Tanager HDF5 extraction utilities."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ from typing import Sequence
 import h5py
 import numpy as np
 
+from .aod import AodSummary, summarize_aod
 from .bands import band_index
 from .cache import CacheConfig
 
@@ -15,7 +16,7 @@ GRID = "HDFEOS/GRIDS/HYP/Data Fields/"
 
 
 def scene_paths(scene_id: str, cache: CacheConfig | Path | str | None = None) -> tuple[Path, Path]:
-    """Return the expected cached SR and radiance HDF5 paths for one scene."""
+    """Return the expected cached Tanager SR and radiance HDF5 paths for one scene."""
 
     if isinstance(cache, CacheConfig):
         root = cache.child("scenes", scene_id)
@@ -27,7 +28,7 @@ def scene_paths(scene_id: str, cache: CacheConfig | Path | str | None = None) ->
 
 
 def validate_aoi(sr_h5: h5py.File, aoi: tuple[int, int, int, int]) -> None:
-    """Raise ``ValueError`` if ``aoi`` does not fit inside the SR scene."""
+    """Raise ``ValueError`` if ``aoi`` does not fit inside the Tanager SR scene."""
 
     nrows, ncols = sr_h5[GRID + "aerosol_optical_depth"].shape
     r0, r1, c0, c1 = aoi
@@ -70,13 +71,13 @@ def _slice_cube(dataset, band_indices, aoi=None, rows=None, cols=None) -> np.nda
 
 
 def wavelengths_nm(h5: h5py.File, dataset: str = "surface_reflectance") -> np.ndarray:
-    """Read the wavelength centers from a Tanager band cube."""
+    """Read wavelength centers from a Tanager band cube."""
 
     return np.asarray(h5[GRID + dataset].attrs["wavelengths"], dtype="f8")
 
 
 def geometry(l1_h5: h5py.File, aoi=None, rows=None, cols=None) -> dict[str, np.ndarray]:
-    """Read sun and view geometry arrays."""
+    """Read Tanager sun and view geometry arrays."""
 
     fields = (
         ("sun_z", "sun_zenith"),
@@ -88,7 +89,7 @@ def geometry(l1_h5: h5py.File, aoi=None, rows=None, cols=None) -> dict[str, np.n
 
 
 def land_valid_mask(sr_h5: h5py.File, aoi=None, rows=None, cols=None) -> np.ndarray:
-    """Return the cloud, cirrus, and nodata validity mask for land scenes."""
+    """Return the Tanager cloud, cirrus, and nodata validity mask for land scenes."""
 
     cloud = _slice_2d(sr_h5[GRID + "beta_cloud_mask"], aoi, rows, cols)
     cirrus = _slice_2d(sr_h5[GRID + "beta_cirrus_mask"], aoi, rows, cols)
@@ -100,6 +101,19 @@ def shipped_aod(sr_h5: h5py.File, aoi=None, rows=None, cols=None) -> np.ndarray:
     """Read Tanager's delivered aerosol optical depth."""
 
     return _slice_2d(sr_h5[GRID + "aerosol_optical_depth"], aoi, rows, cols)
+
+
+def shipped_aod_summary(
+    sr_h5: h5py.File,
+    aoi=None,
+    rows=None,
+    cols=None,
+    valid_mask=None,
+) -> AodSummary:
+    """Summarize Tanager HDF5 delivered aerosol optical depth for selected pixels."""
+
+    values = shipped_aod(sr_h5, aoi=aoi, rows=rows, cols=cols)
+    return summarize_aod(values, valid_mask=valid_mask, detail="Tanager shipped aerosol_optical_depth")
 
 
 def column_water_vapour(sr_h5: h5py.File, aoi=None, rows=None, cols=None) -> np.ndarray:
@@ -116,7 +130,7 @@ def radiance_window(
     rows=None,
     cols=None,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Read a continuous radiance band window with the band axis last."""
+    """Read a continuous Tanager radiance band window with the band axis last."""
 
     wl = wavelengths_nm(l1_h5, dataset="toa_radiance")
     band_indices = np.flatnonzero((wl >= wl_lo_nm) & (wl <= wl_hi_nm))
@@ -131,7 +145,7 @@ def radiance_at(
     rows=None,
     cols=None,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Read nearest-band radiance for each requested wavelength."""
+    """Read nearest-band Tanager radiance for each requested wavelength."""
 
     wl = wavelengths_nm(l1_h5, dataset="toa_radiance")
     band_indices = np.array([band_index(wl, target) for target in targets_nm], dtype=int)
@@ -146,10 +160,9 @@ def reflectance_at(
     rows=None,
     cols=None,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Read nearest-band surface reflectance for each requested wavelength."""
+    """Read nearest-band Tanager surface reflectance for each requested wavelength."""
 
     wl = wavelengths_nm(sr_h5, dataset="surface_reflectance")
     band_indices = np.array([band_index(wl, target) for target in targets_nm], dtype=int)
     reflectance = _slice_cube(sr_h5[GRID + "surface_reflectance"], band_indices, aoi, rows, cols)
     return wl[band_indices], reflectance
-

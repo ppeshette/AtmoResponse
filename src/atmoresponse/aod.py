@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Callable, Mapping, Sequence
 
+import numpy as np
+
 from .cache import CacheConfig
 
 CO_LOCATED_KM = 25.0
@@ -73,6 +75,20 @@ class AodEstimate:
         return None
 
 
+@dataclass(frozen=True)
+class AodSummary:
+    """Representative AOD from a scene product or selected pixel group."""
+
+    value: float
+    statistic: str
+    count: int
+    mean: float
+    std: float
+    minimum: float
+    maximum: float
+    detail: str
+
+
 AodProvider = Callable[[AodQuery, CacheConfig | None], AodEstimate | None]
 
 
@@ -86,6 +102,38 @@ def agrees(retrieved_aod: float, reference: AodEstimate) -> bool:
     """Return whether a retrieved AOD is inside the reference expected-error envelope."""
 
     return abs(retrieved_aod - reference.value) <= expected_error(reference.value) + 1e-12
+
+
+def summarize_aod(
+    values,
+    valid_mask=None,
+    *,
+    detail: str = "",
+) -> AodSummary:
+    """Summarize finite AOD values with a median representative value."""
+
+    array = np.asarray(values, dtype="f8")
+    valid = np.isfinite(array)
+    if valid_mask is not None:
+        mask = np.asarray(valid_mask, dtype=bool)
+        if mask.shape != array.shape:
+            raise ValueError(f"valid_mask shape {mask.shape} does not match values shape {array.shape}")
+        valid &= mask
+
+    selected = array[valid]
+    if selected.size == 0:
+        raise ValueError("no valid AOD values to summarize")
+
+    return AodSummary(
+        value=float(np.median(selected)),
+        statistic="median",
+        count=int(selected.size),
+        mean=float(np.mean(selected)),
+        std=float(np.std(selected)),
+        minimum=float(np.min(selected)),
+        maximum=float(np.max(selected)),
+        detail=detail,
+    )
 
 
 def gather_aod(

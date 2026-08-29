@@ -58,7 +58,7 @@ when complete.
 ## Current Scaffold
 
 This scaffold defines the public import boundary while the full implementation is assembled.
-Tanager catalog search, scene asset resolution, cache-backed scene downloads, HDF5 extraction
-utilities, AOD reference-selection infrastructure, and an AERONET AOD provider are implemented.
-GOES/VIIRS/MERRA-2 aerosol providers, LUT storage, and full sensitivity evaluation are named but not
-yet implemented.
+Shared scene models, cache-backed downloads, source-neutral scene asset caching, explicit Tanager
+catalog access, a Tanager HDF5 adapter, shipped-AOD summaries, AOD reference-selection
+infrastructure, and an AERONET AOD provider are implemented. GOES/VIIRS/MERRA-2 aerosol providers,
+EMIT adapters, LUT storage, and full sensitivity evaluation are named but not yet implemented.

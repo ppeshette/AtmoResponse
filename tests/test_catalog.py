@@ -1,12 +1,12 @@
 import datetime as dt
 
-from atmoresponse.catalog import (
-    TANAGER_CATALOG_URL,
-    SceneQuery,
+from atmoresponse.tanager_catalog import (
+    CATALOG_URL,
     build_index,
     get_scene_assets,
     search_scenes,
 )
+from atmoresponse.catalog import SceneQuery
 
 
 class FakeResponse:
@@ -55,7 +55,7 @@ def _item(scene_id, acquired, cloud_percent, lon0, lat0, lon1, lat1, assets):
 
 def _session():
     return FakeSession({
-        TANAGER_CATALOG_URL: {
+        CATALOG_URL: {
             "id": "tanager-core-imagery",
             "links": [
                 {"rel": "child", "href": "fire/catalog.json"},
@@ -122,6 +122,7 @@ def test_search_scenes_filters_catalog_records():
     scenes = search_scenes(query, session=_session())
 
     assert [scene.scene_id for scene in scenes] == ["scene-a"]
+    assert scenes[0].source == "tanager"
     assert scenes[0].cloud_percent == 12.0
     assert scenes[0].collections == ("fire", "water")
 
@@ -137,7 +138,7 @@ def test_get_scene_assets_maps_known_tanager_assets():
 
 
 def test_empty_catalog_returns_no_scenes():
-    session = FakeSession({TANAGER_CATALOG_URL: {"id": "empty", "links": []}})
+    session = FakeSession({CATALOG_URL: {"id": "empty", "links": []}})
 
     assert build_index(session=session).empty
     assert search_scenes(SceneQuery(), session=session) == []

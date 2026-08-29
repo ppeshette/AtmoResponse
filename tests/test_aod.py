@@ -11,6 +11,7 @@ from atmoresponse.aod import (
     expected_error,
     gather_aod,
     resolve_aod,
+    summarize_aod,
 )
 
 
@@ -54,6 +55,37 @@ def test_expected_error_agreement_is_two_sided():
     assert agrees(0.12, ref)
     assert agrees(0.28, ref)
     assert not agrees(0.30, ref)
+
+
+def test_summarize_aod_uses_median_and_carries_distribution_stats():
+    summary = summarize_aod([0.1, 0.2, 0.9], detail="fixture")
+
+    assert summary.value == 0.2
+    assert summary.statistic == "median"
+    assert summary.count == 3
+    assert summary.mean == pytest.approx(0.4)
+    assert summary.std == pytest.approx(0.3559026)
+    assert summary.minimum == 0.1
+    assert summary.maximum == 0.9
+    assert summary.detail == "fixture"
+
+
+def test_summarize_aod_ignores_nan_and_optional_invalid_pixels():
+    summary = summarize_aod(
+        [0.1, float("nan"), 0.3, 0.9],
+        valid_mask=[True, True, True, False],
+    )
+
+    assert summary.value == 0.2
+    assert summary.count == 2
+
+
+def test_summarize_aod_rejects_empty_or_mismatched_inputs():
+    with pytest.raises(ValueError, match="no valid AOD"):
+        summarize_aod([float("nan")])
+
+    with pytest.raises(ValueError, match="valid_mask shape"):
+        summarize_aod([0.1, 0.2], valid_mask=[True])
 
 
 def test_gather_aod_preserves_source_order_and_skips_missing_data():

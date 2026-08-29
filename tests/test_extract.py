@@ -2,7 +2,7 @@ import h5py
 import numpy as np
 
 from atmoresponse.cache import CacheConfig
-from atmoresponse.extract import (
+from atmoresponse.tanager_hdf5 import (
     GRID,
     column_water_vapour,
     geometry,
@@ -12,6 +12,7 @@ from atmoresponse.extract import (
     reflectance_at,
     scene_paths,
     shipped_aod,
+    shipped_aod_summary,
     validate_aoi,
     wavelengths_nm,
 )
@@ -135,6 +136,23 @@ def test_shipped_aod_and_cwv_match_between_modes():
 
     np.testing.assert_array_equal(aod_scattered.reshape(2, 2), aod_block)
     np.testing.assert_array_equal(cwv_scattered.reshape(2, 2), cwv_block)
+
+
+def test_shipped_aod_summary_returns_neutral_aod_summary():
+    with _fake_sr() as f:
+        summary = shipped_aod_summary(
+            f,
+            aoi=(0, 2, 0, 2),
+            valid_mask=np.array([[True, True], [True, False]]),
+        )
+
+    assert summary.value == 0.01
+    assert summary.statistic == "median"
+    assert summary.count == 3
+    assert summary.mean == np.mean([0.0, 0.01, 0.04])
+    assert summary.minimum == 0.0
+    assert summary.maximum == 0.04
+    assert summary.detail == "Tanager shipped aerosol_optical_depth"
 
 
 def test_geometry_reads_all_four_fields_consistently():

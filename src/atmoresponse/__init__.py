@@ -2,17 +2,14 @@
 
 from ._version import __version__
 from .cache import CacheConfig
-from .catalog import SceneAssets, SceneQuery, SceneRecord, get_scene_assets, search_scenes
-from .data import CachedSceneFiles, cache_scene_files
+from .catalog import SceneAssets, SceneQuery, SceneRecord
+from .data import LocalSceneFiles
 
 __all__ = [
     "__version__",
     "CacheConfig",
-    "CachedSceneFiles",
+    "LocalSceneFiles",
     "SceneAssets",
     "SceneQuery",
     "SceneRecord",
-    "cache_scene_files",
-    "get_scene_assets",
-    "search_scenes",
 ]

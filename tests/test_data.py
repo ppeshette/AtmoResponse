@@ -1,8 +1,10 @@
 import datetime as dt
 
 from atmoresponse.cache import CacheConfig
+from atmoresponse.downloads import download_file
 from atmoresponse.catalog import SceneAssets, SceneRecord
-from atmoresponse.data import cache_scene_files, download_file
+from atmoresponse.data import cache_scene_files
+from atmoresponse import tanager_data
 
 
 class FakeHeadResponse:
@@ -57,6 +59,7 @@ def _scene_record():
         scene_id="scene-a",
         acquired=dt.datetime(2025, 1, 1),
         bbox=(-119.0, 34.0, -118.0, 35.0),
+        source="tanager",
     )
 
 
@@ -87,7 +90,7 @@ def test_download_file_skips_complete_file(tmp_path):
     assert session.get_calls == []
 
 
-def test_cache_scene_files_downloads_sr_and_radiance(tmp_path):
+def test_tanager_data_caches_sr_and_radiance_with_stable_names(tmp_path):
     urls = {
         "https://example.test/source-name-sr.h5": b"sr",
         "https://example.test/source-name-l1.h5": b"l1",
@@ -101,7 +104,7 @@ def test_cache_scene_files_downloads_sr_and_radiance(tmp_path):
         auxiliary={"quicklook": "https://example.test/quicklook.tif"},
     )
 
-    files = cache_scene_files(assets, cache=CacheConfig(tmp_path), session=session)
+    files = tanager_data.cache_scene_files(assets, cache=CacheConfig(tmp_path), session=session)
 
     assert files.surface_reflectance == tmp_path / "scenes" / "scene-a" / "scene-a_ortho_sr.h5"
     assert files.radiance == tmp_path / "scenes" / "scene-a" / "scene-a_ortho_radiance.h5"
@@ -111,7 +114,7 @@ def test_cache_scene_files_downloads_sr_and_radiance(tmp_path):
     assert "https://example.test/quicklook.tif" not in session.get_calls
 
 
-def test_cache_scene_files_can_include_auxiliary_assets(tmp_path):
+def test_tanager_data_can_include_auxiliary_assets(tmp_path):
     urls = {
         "https://example.test/source-name-sr.h5": b"sr",
         "https://example.test/quicklook.tif": b"ql",
@@ -123,7 +126,7 @@ def test_cache_scene_files_can_include_auxiliary_assets(tmp_path):
         auxiliary={"quicklook": "https://example.test/quicklook.tif"},
     )
 
-    files = cache_scene_files(
+    files = tanager_data.cache_scene_files(
         assets,
         cache=CacheConfig(tmp_path),
         session=session,
@@ -132,3 +135,14 @@ def test_cache_scene_files_can_include_auxiliary_assets(tmp_path):
 
     assert files.auxiliary == {"quicklook": tmp_path / "scenes" / "scene-a" / "quicklook.tif"}
     assert files.auxiliary["quicklook"].read_bytes() == b"ql"
+
+
+def test_cache_scene_files_can_use_source_neutral_filenames(tmp_path):
+    url = "https://example.test/emit-reflectance.nc"
+    session = FakeDownloadSession({url: b"emit"})
+    assets = SceneAssets(scene=_scene_record(), surface_reflectance=url)
+
+    files = cache_scene_files(assets, cache=CacheConfig(tmp_path), session=session)
+
+    assert files.surface_reflectance == tmp_path / "scenes" / "scene-a" / "emit-reflectance.nc"
+    assert files.surface_reflectance.read_bytes() == b"emit"
