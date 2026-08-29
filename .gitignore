@@ -20,6 +20,7 @@ data/
 cache/
 outputs/
 figures/generated/
+*.part
 *.nc
 *.h5
 *.hdf
@@ -33,4 +34,3 @@ _netrc
 *.pem
 *.key
 secrets.*
-

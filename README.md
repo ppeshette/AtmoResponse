@@ -52,11 +52,12 @@ server for catalog search.
 
 AtmoResponse uses a cache-first workflow. Set `ATMORESPONSE_CACHE` to choose the local cache
 location. If the variable is unset, the package uses a platform cache directory under the current
-user profile.
+user profile. Scene asset downloads are written to temporary files first, then moved into the cache
+when complete.
 
 ## Current Scaffold
 
-This first scaffold defines the public import boundary before the private implementation is curated
-into the package. Tanager catalog search and scene asset resolution are implemented. External
-aerosol lookup, LUT storage, HDF5 extraction, and full sensitivity evaluation are named but not yet
-implemented.
+This scaffold defines the public import boundary while the full implementation is assembled.
+Tanager catalog search, scene asset resolution, and cache-backed scene downloads are implemented.
+External aerosol lookup, LUT storage, HDF5 extraction, and full sensitivity evaluation are named but
+not yet implemented.
