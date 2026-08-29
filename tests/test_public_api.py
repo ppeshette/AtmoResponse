@@ -20,13 +20,15 @@ def test_package_has_version():
 
 
 def test_domain_apis_stay_under_modules():
-    from atmoresponse import aod, catalog, data, extract, lut, sensitivity
+    from atmoresponse import aeronet, aod, catalog, data, extract, geo, lut, sensitivity
 
     assert callable(aod.gather_aod)
     assert callable(aod.best_aod)
+    assert callable(aeronet.from_aeronet)
     assert callable(catalog.search_scenes)
     assert callable(data.cache_scene_files)
     assert callable(extract.radiance_at)
+    assert callable(geo.haversine_km)
     assert callable(lut.reflectance_from_radiance)
     assert callable(aod.resolve_aod)
     assert callable(sensitivity.evaluate_sensitivity)
@@ -35,7 +37,9 @@ def test_domain_apis_stay_under_modules():
 def test_low_level_helpers_are_not_root_exports():
     assert "build_index" not in atmoresponse.__all__
     assert "download_file" not in atmoresponse.__all__
+    assert "from_aeronet" not in atmoresponse.__all__
     assert "gather_aod" not in atmoresponse.__all__
+    assert "haversine_km" not in atmoresponse.__all__
     assert "radiance_at" not in atmoresponse.__all__
     assert "reflectance_from_radiance" not in atmoresponse.__all__
     assert "resolve_aod" not in atmoresponse.__all__
