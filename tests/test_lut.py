@@ -1,6 +1,6 @@
 import numpy as np
 
-from atmoresponse import (
+from atmoresponse.lut import (
     CorrectionCoefficients,
     radiance_from_reflectance,
     reflectance_from_radiance,

@@ -23,6 +23,7 @@ classifiers = [
 ]
 dependencies = [
   "geopandas>=0.14",
+  "h5py>=3.10",
   "numpy>=1.26",
   "requests>=2.31",
   "shapely>=2.0",
@@ -30,7 +31,6 @@ dependencies = [
 
 [project.optional-dependencies]
 live = [
-  "h5py>=3.10",
   "pystac-client>=0.8",
   "requests>=2.31",
 ]

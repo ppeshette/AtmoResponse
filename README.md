@@ -58,6 +58,6 @@ when complete.
 ## Current Scaffold
 
 This scaffold defines the public import boundary while the full implementation is assembled.
-Tanager catalog search, scene asset resolution, and cache-backed scene downloads are implemented.
-External aerosol lookup, LUT storage, HDF5 extraction, and full sensitivity evaluation are named but
-not yet implemented.
+Tanager catalog search, scene asset resolution, cache-backed scene downloads, and HDF5 extraction
+utilities are implemented. External aerosol lookup, LUT storage, and full sensitivity evaluation are
+named but not yet implemented.

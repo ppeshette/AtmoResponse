@@ -2,12 +2,8 @@ import datetime as dt
 
 import pytest
 
-from atmoresponse import (
-    AodQuery,
-    CacheConfig,
-    SceneQuery,
-    resolve_aod,
-)
+from atmoresponse.aod import AodQuery, resolve_aod
+from atmoresponse.cache import CacheConfig
 
 
 def test_cache_default_has_project_name(monkeypatch):
