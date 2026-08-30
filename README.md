@@ -49,6 +49,7 @@ readable setup messages when credentials are absent.
 
 AtmoResponse walks Planet's static Tanager STAC catalog directly. It does not require a STAC API
 server for catalog search.
+EMIT catalog searches use NASA CMR and can target either L2A reflectance or L1B radiance products.
 
 AtmoResponse uses a cache-first workflow. Set `ATMORESPONSE_CACHE` to choose the local cache
 location. If the variable is unset, the package uses a platform cache directory under the current
@@ -58,7 +59,8 @@ when complete.
 ## Current Scaffold
 
 This scaffold defines the public import boundary while the full implementation is assembled.
-Shared scene models, cache-backed downloads, source-neutral scene asset caching, explicit Tanager
-catalog access, a Tanager HDF5 adapter, shipped-AOD summaries, AOD reference-selection
-infrastructure, and an AERONET AOD provider are implemented. GOES/VIIRS/MERRA-2 aerosol providers,
-EMIT adapters, LUT storage, and full sensitivity evaluation are named but not yet implemented.
+Shared scene models, a neutral hyperspectral cube, cache-backed downloads, source-neutral scene asset
+caching, explicit Tanager and EMIT catalog access, source-neutral surface classification, Tanager and
+EMIT adapters, shipped-AOD summaries, AOD reference-selection infrastructure, and an AERONET AOD
+provider are implemented. GOES/VIIRS/MERRA-2 aerosol providers, LUT storage, and full sensitivity
+evaluation are named but not yet implemented.

@@ -5,10 +5,13 @@ def test_package_root_exports_stable_data_front_door():
     assert atmoresponse.__all__ == [
         "__version__",
         "CacheConfig",
+        "HyperspectralCube",
+        "LandCoverSample",
         "LocalSceneFiles",
         "SceneAssets",
         "SceneQuery",
         "SceneRecord",
+        "SurfaceClassification",
     ]
 
 
@@ -21,42 +24,51 @@ def test_domain_apis_stay_under_modules():
         aeronet,
         aod,
         catalog,
+        cube,
         data,
         downloads,
         geo,
         lut,
         sensitivity,
+        surface_classes,
         tanager_catalog,
         tanager_data,
-        tanager_hdf5,
+        tanager_ortho,
     )
 
     assert callable(aod.gather_aod)
     assert callable(aod.best_aod)
     assert callable(aod.summarize_aod)
     assert callable(aeronet.from_aeronet)
+    assert atmoresponse.HyperspectralCube is cube.HyperspectralCube
+    assert atmoresponse.LandCoverSample is surface_classes.LandCoverSample
     assert atmoresponse.SceneRecord is catalog.SceneRecord
+    assert atmoresponse.SurfaceClassification is surface_classes.SurfaceClassification
     assert callable(data.cache_scene_files)
     assert callable(downloads.download_file)
     assert callable(geo.haversine_km)
     assert callable(lut.reflectance_from_radiance)
     assert callable(aod.resolve_aod)
     assert callable(sensitivity.evaluate_sensitivity)
+    assert callable(surface_classes.classify_scene_surface)
     assert callable(tanager_catalog.search_scenes)
     assert callable(tanager_data.cache_scene_files)
-    assert callable(tanager_hdf5.radiance_at)
-    assert callable(tanager_hdf5.shipped_aod_summary)
+    assert callable(tanager_ortho.radiance_at)
+    assert callable(tanager_ortho.shipped_aod_summary)
 
 
 def test_low_level_helpers_are_not_root_exports():
     assert "build_index" not in atmoresponse.__all__
     assert "cache_scene_files" not in atmoresponse.__all__
+    assert "classify_scene_surface" not in atmoresponse.__all__
     assert "download_file" not in atmoresponse.__all__
     assert "from_aeronet" not in atmoresponse.__all__
     assert "gather_aod" not in atmoresponse.__all__
     assert "get_scene_assets" not in atmoresponse.__all__
     assert "haversine_km" not in atmoresponse.__all__
     assert "radiance_at" not in atmoresponse.__all__
+    assert "radiance_cube" not in atmoresponse.__all__
+    assert "reflectance_cube" not in atmoresponse.__all__
     assert "search_scenes" not in atmoresponse.__all__
     assert "shipped_aod_summary" not in atmoresponse.__all__
     assert "reflectance_from_radiance" not in atmoresponse.__all__
