@@ -41,6 +41,12 @@ python -m pip install -e ".[test,live,geo]"
 python -m pytest
 ```
 
+Run the offline quickstart:
+
+```bash
+python examples/quickstart.py
+```
+
 ## Data Access
 
 Default examples should run against public Planet STAC metadata and public Tanager scene assets.
