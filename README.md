@@ -62,6 +62,6 @@ This scaffold defines the public import boundary while the full implementation i
 Shared scene models, a neutral hyperspectral cube, cache-backed downloads, source-neutral scene asset
 caching, explicit Tanager and EMIT catalog access, source-neutral surface classification, Tanager and
 EMIT adapters, shipped-AOD summaries, AOD reference-selection infrastructure, an AERONET AOD provider,
-LUT coefficient algebra, fixed-library SAM primitives, and the RSI/WI, Wynne CI, and AlOH example
-algorithms are implemented. GOES/VIIRS/MERRA-2 aerosol providers, LUT storage, Malibu SAM assets,
-and full sensitivity evaluation are named but not yet implemented.
+LUT coefficient algebra, fixed-library SAM primitives, the bundled Malibu wildfire SAM library, and
+the RSI/WI, Wynne CI, and AlOH example algorithms are implemented. GOES/VIIRS/MERRA-2 aerosol
+providers, LUT storage, and full sensitivity evaluation are named but not yet implemented.

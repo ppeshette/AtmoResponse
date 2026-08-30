@@ -1,0 +1,21 @@
+{
+  "asset": "wildfire_vnir_sam_curated.npz",
+  "domain": "surface_reflectance",
+  "target_label": "burned_surface_mixed",
+  "wavelength_grid_nm": {
+    "start": 400.0,
+    "stop": 1300.0,
+    "step": 1.0
+  },
+  "entries": 28,
+  "group_counts": {
+    "burned": 14,
+    "unburned": 14
+  },
+  "sources": [
+    "USGS Digital Spectral Library splib06a (Clark et al. 2007)",
+    "Landmann & Roy 2004, SAFARI 2000 fire residue, doi:10.3334/ORNLDAAC/751"
+  ],
+  "selection_method": "Class quotas; medoid seed; angular farthest-first fill",
+  "intended_use": "Fixed-library 400-1300 nm SAM demonstration for post-fire land pixels. Apply a site-appropriate land or analysis mask before interpreting class maps."
+}

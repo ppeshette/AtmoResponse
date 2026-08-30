@@ -76,10 +76,12 @@ def test_low_level_helpers_are_not_root_exports():
     assert "evaluate_sensitivity" not in atmoresponse.__all__
 
 
-def test_recipes_exports_sam_module_not_individual_sam_helpers():
+def test_recipes_exports_sam_modules_not_individual_sam_helpers():
     from atmoresponse import recipes
 
     assert recipes.sam.__name__ == "atmoresponse.recipes.sam"
+    assert recipes.wildfire_sam.__name__ == "atmoresponse.recipes.wildfire_sam"
     assert "sam" in recipes.__all__
+    assert "wildfire_sam" in recipes.__all__
     assert "sam_angles" not in recipes.__all__
     assert "labeled_sam_score" not in recipes.__all__

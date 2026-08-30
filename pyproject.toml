@@ -45,3 +45,6 @@ test = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+"atmoresponse.assets.endmembers" = ["*.json", "*.npz"]
