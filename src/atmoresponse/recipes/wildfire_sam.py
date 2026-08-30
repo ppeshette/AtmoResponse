@@ -13,11 +13,10 @@ from atmoresponse.cube import HyperspectralCube
 from atmoresponse.sensitivity import LabeledScore
 
 from .sam import (
+    PreparedSamClassifier,
     SamResult,
-    classify_by_angle,
-    labeled_sam_score,
     labels_for_indices,
-    resample_library,
+    prepare_sam_classifier,
 )
 
 WILDFIRE_SAM_TARGET_LABEL = "burned_surface_mixed"
@@ -29,7 +28,7 @@ _FILL_LIMIT = -900.0
 
 @dataclass(frozen=True)
 class WildfireSamLibrary:
-    """Public fixed wildfire endmember library used by the Malibu SAM example."""
+    """Public fixed wildfire endmember library used by the wildfire SAM example."""
 
     wavelengths_nm: np.ndarray
     reflectance: np.ndarray
@@ -73,25 +72,25 @@ def load_wildfire_sam_library() -> WildfireSamLibrary:
             )
 
 
-def _library_band_mask(wavelengths_nm, library: WildfireSamLibrary) -> np.ndarray:
-    wavelengths = np.asarray(wavelengths_nm, dtype="f8")
-    if wavelengths.ndim != 1:
-        raise ValueError("wavelengths_nm must be one-dimensional")
-    mask = (wavelengths >= library.wavelengths_nm[0]) & (wavelengths <= library.wavelengths_nm[-1])
-    if not mask.any():
-        raise ValueError("no wavelengths fall within the wildfire SAM library range")
-    return mask
+def prepare_wildfire_sam(
+    wavelengths_nm,
+    library: WildfireSamLibrary | None = None,
+    *,
+    band_stride: int = 1,
+) -> PreparedSamClassifier:
+    """Prepare the wildfire SAM library once for repeated runs on a wavelength grid."""
 
-
-def _prepared_values(values, mask=None) -> np.ndarray:
-    prepared = np.asarray(values, dtype="f8").copy()
-    prepared[prepared <= _FILL_LIMIT] = np.nan
-    if mask is not None:
-        valid = np.asarray(mask, dtype=bool)
-        if valid.shape != prepared.shape[:-1]:
-            raise ValueError("mask shape must match the non-band dimensions")
-        prepared = np.where(valid[..., None], prepared, np.nan)
-    return prepared
+    library = library or load_wildfire_sam_library()
+    return prepare_sam_classifier(
+        wavelengths_nm,
+        library.wavelengths_nm,
+        library.reflectance,
+        library.labels,
+        library.target_index,
+        group_labels=library.group_labels,
+        fill_limit=_FILL_LIMIT,
+        band_stride=band_stride,
+    )
 
 
 def classify_wildfire_sam(
@@ -104,12 +103,8 @@ def classify_wildfire_sam(
     ``cube.mask`` or caller-side filtering. Open water and unrelated surfaces are not screened here.
     """
 
-    library = library or load_wildfire_sam_library()
-    band_mask = _library_band_mask(cube.wavelengths_nm, library)
-    wavelengths = cube.wavelengths_nm[band_mask]
-    endmembers = resample_library(library.wavelengths_nm, library.reflectance, wavelengths)
-    values = _prepared_values(cube.values[..., band_mask], cube.mask)
-    return classify_by_angle(values, endmembers)
+    prepared = prepare_wildfire_sam(cube.wavelengths_nm, library)
+    return prepared.classify_values(cube.values, cube.mask)
 
 
 def wildfire_sam_labels(
@@ -130,21 +125,9 @@ def wildfire_sam_score(
     spectrum,
     wavelengths_nm,
     library: WildfireSamLibrary | None = None,
+    *,
+    band_stride: int = 1,
 ) -> LabeledScore:
     """Score one spectrum by angle to the burned-surface target row."""
 
-    library = library or load_wildfire_sam_library()
-    band_mask = _library_band_mask(wavelengths_nm, library)
-    spectrum = np.asarray(spectrum, dtype="f8")
-    if spectrum.ndim != 1 or spectrum.size != band_mask.size:
-        raise ValueError("spectrum must be one-dimensional and match wavelengths_nm")
-    wavelengths = np.asarray(wavelengths_nm, dtype="f8")[band_mask]
-    values = _prepared_values(spectrum[band_mask])
-    endmembers = resample_library(library.wavelengths_nm, library.reflectance, wavelengths)
-    return labeled_sam_score(
-        values,
-        endmembers,
-        library.labels,
-        target_index=library.target_index,
-        group_labels=library.group_labels,
-    )
+    return prepare_wildfire_sam(wavelengths_nm, library, band_stride=band_stride).evaluate(spectrum)

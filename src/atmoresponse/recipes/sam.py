@@ -18,7 +18,93 @@ class SamResult:
     class_index: np.ndarray
 
 
-def resample_spectrum(source_wavelengths_nm, source_reflectance, target_wavelengths_nm) -> np.ndarray:
+@dataclass(frozen=True)
+class PreparedSamClassifier:
+    """Fixed-library SAM classifier prepared for one wavelength grid."""
+
+    wavelengths_nm: np.ndarray
+    band_mask: np.ndarray
+    endmembers: np.ndarray
+    labels_raw: tuple[str, ...]
+    target_index: int
+    group_labels: tuple[str, ...] | None = None
+    fill_limit: float | None = None
+
+    @property
+    def selected_wavelengths_nm(self) -> np.ndarray:
+        """Wavelengths retained for SAM scoring."""
+
+        return self.wavelengths_nm[self.band_mask]
+
+    def _values(self, values, mask=None) -> np.ndarray:
+        array = np.asarray(values, dtype="f8")
+        if array.ndim < 1 or array.shape[-1] != self.band_mask.size:
+            raise ValueError("values must be band-last and match the prepared wavelengths")
+        prepared = array[..., self.band_mask].copy()
+        if self.fill_limit is not None:
+            prepared[prepared <= self.fill_limit] = np.nan
+        if mask is not None:
+            valid = np.asarray(mask, dtype=bool)
+            if valid.shape != prepared.shape[:-1]:
+                raise ValueError("mask shape must match the non-band dimensions")
+            prepared = np.where(valid[..., None], prepared, np.nan)
+        return prepared
+
+    def classify_values(self, values, mask=None) -> SamResult:
+        """Classify a band-last value array using pre-resampled endmembers."""
+
+        return classify_by_angle(self._values(values, mask), self.endmembers)
+
+    def labels(
+        self,
+        class_index,
+        *,
+        grouped: bool = True,
+        invalid_label: str | None = None,
+    ) -> np.ndarray:
+        """Map SAM class indices to raw labels or grouped labels."""
+
+        group_labels = self.group_labels if grouped else None
+        return labels_for_indices(class_index, self.labels_raw, invalid_label, group_labels)
+
+    def evaluate(self, spectrum) -> LabeledScore:
+        """Score one spectrum by angle to the target library row."""
+
+        return _labeled_score_from_angles(
+            sam_angles(self._values(spectrum), self.endmembers),
+            self.labels_raw,
+            self.target_index,
+            self.group_labels,
+        )
+
+    def __call__(self, spectrum) -> LabeledScore:
+        """Callable alias for sensitivity runners that accept scalar algorithms."""
+
+        return self.evaluate(spectrum)
+
+    def evaluate_many(self, spectra) -> list[LabeledScore]:
+        """Score many spectra in one vectorized SAM pass."""
+
+        angles = sam_angles(self._values(spectra), self.endmembers).reshape(
+            -1,
+            len(self.labels_raw),
+        )
+        return [
+            _labeled_score_from_angles(
+                row,
+                self.labels_raw,
+                self.target_index,
+                self.group_labels,
+            )
+            for row in angles
+        ]
+
+
+def resample_spectrum(
+    source_wavelengths_nm,
+    source_reflectance,
+    target_wavelengths_nm,
+) -> np.ndarray:
     """Linearly resample one fixed spectrum onto target wavelengths in nm."""
 
     source_wavelengths = np.asarray(source_wavelengths_nm, dtype="f8")
@@ -42,7 +128,11 @@ def resample_spectrum(source_wavelengths_nm, source_reflectance, target_waveleng
     return np.interp(target_wavelengths, source_wavelengths, source_values)
 
 
-def resample_library(library_wavelengths_nm, library_reflectance, target_wavelengths_nm) -> np.ndarray:
+def resample_library(
+    library_wavelengths_nm,
+    library_reflectance,
+    target_wavelengths_nm,
+) -> np.ndarray:
     """Linearly resample fixed-library rows onto target wavelengths in nm."""
 
     source_wavelengths = np.asarray(library_wavelengths_nm, dtype="f8")
@@ -120,6 +210,100 @@ def labels_for_indices(
     return out
 
 
+def _library_band_mask(wavelengths_nm, library_wavelengths_nm, band_stride: int) -> np.ndarray:
+    wavelengths = np.asarray(wavelengths_nm, dtype="f8")
+    library_wavelengths = np.asarray(library_wavelengths_nm, dtype="f8")
+    if wavelengths.ndim != 1 or library_wavelengths.ndim != 1:
+        raise ValueError("wavelengths must be one-dimensional")
+    if library_wavelengths.size == 0:
+        raise ValueError("library_wavelengths_nm must not be empty")
+    if band_stride < 1:
+        raise ValueError("band_stride must be at least 1")
+    mask = (
+        (wavelengths >= library_wavelengths[0])
+        & (wavelengths <= library_wavelengths[-1])
+    )
+    if not mask.any():
+        raise ValueError("no wavelengths fall within the SAM library range")
+    selected = np.flatnonzero(mask)
+    if band_stride > 1:
+        mask[:] = False
+        mask[selected[::band_stride]] = True
+    return mask
+
+
+def _labeled_score_from_angles(
+    angles,
+    labels: Sequence[str],
+    target_index: int,
+    group_labels: Sequence[str] | None = None,
+) -> LabeledScore:
+    angle_array = np.asarray(angles, dtype="f8")
+    if angle_array.ndim != 1:
+        raise ValueError("angles must be one-dimensional")
+    if len(labels) != angle_array.size:
+        raise ValueError("labels must match the number of endmembers")
+    label_array = _labels_array(labels, group_labels)
+    if target_index < 0 or target_index >= angle_array.size:
+        raise ValueError("target_index is outside the endmember library")
+
+    finite = np.flatnonzero(np.isfinite(angle_array))
+    if finite.size == 0:
+        return LabeledScore(value=float("nan"), label="invalid", margin=float("nan"))
+    order = finite[np.argsort(angle_array[finite])]
+    margin = (
+        float(angle_array[order[1]] - angle_array[order[0]])
+        if order.size > 1
+        else float("nan")
+    )
+    return LabeledScore(
+        value=float(angle_array[target_index]),
+        label=str(label_array[order[0]]),
+        margin=margin,
+    )
+
+
+def prepare_sam_classifier(
+    wavelengths_nm,
+    library_wavelengths_nm,
+    library_reflectance,
+    labels: Sequence[str],
+    target_index: int,
+    *,
+    group_labels: Sequence[str] | None = None,
+    fill_limit: float | None = None,
+    band_stride: int = 1,
+) -> PreparedSamClassifier:
+    """Prepare a fixed SAM library once for repeated runs on a wavelength grid."""
+
+    label_array = _labels_array(labels, group_labels)
+    library_reflectance = np.asarray(library_reflectance, dtype="f8")
+    if library_reflectance.ndim != 2:
+        raise ValueError("library_reflectance must have shape (n_entries, n_wavelengths)")
+    if label_array.size != library_reflectance.shape[0]:
+        raise ValueError("labels must match the number of endmembers")
+    if target_index < 0 or target_index >= label_array.size:
+        raise ValueError("target_index is outside the endmember library")
+
+    wavelengths = np.asarray(wavelengths_nm, dtype="f8")
+    band_mask = _library_band_mask(wavelengths, library_wavelengths_nm, band_stride)
+    endmembers = resample_library(
+        library_wavelengths_nm,
+        library_reflectance,
+        wavelengths[band_mask],
+    )
+    grouped = None if group_labels is None else tuple(str(label) for label in group_labels)
+    return PreparedSamClassifier(
+        wavelengths_nm=wavelengths.copy(),
+        band_mask=band_mask,
+        endmembers=endmembers,
+        labels_raw=tuple(str(label) for label in labels),
+        target_index=target_index,
+        group_labels=grouped,
+        fill_limit=fill_limit,
+    )
+
+
 def labeled_sam_score(
     spectrum,
     endmembers,
@@ -132,15 +316,4 @@ def labeled_sam_score(
     angles = np.asarray(sam_angles(spectrum, endmembers), dtype="f8")
     if angles.ndim != 1:
         raise ValueError("spectrum must be one-dimensional")
-    if len(labels) != angles.size:
-        raise ValueError("labels must match the number of endmembers")
-    label_array = _labels_array(labels, group_labels)
-    if target_index < 0 or target_index >= angles.size:
-        raise ValueError("target_index is outside the endmember library")
-
-    finite = np.flatnonzero(np.isfinite(angles))
-    if finite.size == 0:
-        return LabeledScore(value=float("nan"), label="invalid", margin=float("nan"))
-    order = finite[np.argsort(angles[finite])]
-    margin = float(angles[order[1]] - angles[order[0]]) if order.size > 1 else float("nan")
-    return LabeledScore(value=float(angles[target_index]), label=str(label_array[order[0]]), margin=margin)
+    return _labeled_score_from_angles(angles, labels, target_index, group_labels)

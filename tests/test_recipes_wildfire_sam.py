@@ -6,6 +6,7 @@ from atmoresponse.recipes.wildfire_sam import (
     WILDFIRE_SAM_TARGET_LABEL,
     classify_wildfire_sam,
     load_wildfire_sam_library,
+    prepare_wildfire_sam,
     wildfire_sam_labels,
     wildfire_sam_score,
 )
@@ -40,6 +41,34 @@ def test_classify_wildfire_sam_uses_cube_bands_inside_library_range():
     np.testing.assert_allclose(result.angles[0, 0, 0], 0.0, atol=1e-12)
 
 
+def test_prepare_wildfire_sam_reuses_resampled_endmembers():
+    library = load_wildfire_sam_library()
+    wavelengths = np.array([390.0, 400.0, 850.0, 1300.0, 1310.0])
+    prepared = prepare_wildfire_sam(wavelengths, library)
+    expected = np.array([
+        np.interp(wavelengths, library.wavelengths_nm, library.reflectance[0]),
+        np.interp(wavelengths, library.wavelengths_nm, library.reflectance[5]),
+    ])
+
+    scores = prepared.evaluate_many(expected)
+    result = prepared.classify_values(expected.reshape(2, 1, -1))
+
+    assert prepared.band_mask.tolist() == [False, True, True, True, False]
+    assert prepared.endmembers.shape == (28, 3)
+    assert [score.label for score in scores] == ["burned", "unburned"]
+    np.testing.assert_array_equal(result.class_index, [[0], [5]])
+
+
+def test_prepare_wildfire_sam_can_stride_in_range_bands():
+    library = load_wildfire_sam_library()
+    wavelengths = np.array([390.0, 400.0, 850.0, 1300.0, 1310.0])
+    prepared = prepare_wildfire_sam(wavelengths, library, band_stride=2)
+
+    assert prepared.band_mask.tolist() == [False, True, False, True, False]
+    np.testing.assert_allclose(prepared.selected_wavelengths_nm, [400.0, 1300.0])
+    assert prepared.endmembers.shape == (28, 2)
+
+
 def test_classify_wildfire_sam_respects_cube_mask_and_fill_values():
     library = load_wildfire_sam_library()
     values = np.stack([library.reflectance[0], library.reflectance[5], library.reflectance[0]])
@@ -67,8 +96,10 @@ def test_wildfire_sam_labels_can_return_grouped_or_raw_labels():
 def test_wildfire_sam_score_reports_angle_to_target_and_grouped_label():
     library = load_wildfire_sam_library()
     score = wildfire_sam_score(library.reflectance[0], library.wavelengths_nm, library)
+    prepared_score = prepare_wildfire_sam(library.wavelengths_nm, library)(library.reflectance[0])
 
     assert score.label == "burned"
+    assert prepared_score == score
     np.testing.assert_allclose(score.value, 0.0, atol=1e-12)
     assert score.margin > 0.0
 
