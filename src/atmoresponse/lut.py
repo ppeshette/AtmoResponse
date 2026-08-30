@@ -147,20 +147,24 @@ class CorrectionCoefficients:
 
 # --------------------------------------------------------------------------- axes
 
+_BUNDLED_AXES = {"tanager": "axes_tanager.json", "emit": "axes_emit.json"}
+
+
 @lru_cache(maxsize=None)
-def load_axes(path=None):
+def load_axes(path=None, *, sensor="tanager"):
     """Load the axis-definition file (index -> value, per axis).
 
-    ``path=None`` reads the copy bundled with the package. Axis value lists are
-    **append-only**: refining density adds values at the end, so an existing
-    cell's integer key never changes meaning. Index order is therefore not value
-    order -- always sort by value at lookup.
+    ``path=None`` reads the copy bundled with the package for ``sensor``
+    (``"tanager"`` or ``"emit"``). Axis value lists are **append-only**: refining
+    density adds values at the end, so an existing cell's integer key never
+    changes meaning. Index order is therefore not value order, so always sort by
+    value at lookup.
 
     Cached for the process lifetime. Call ``load_axes.cache_clear()`` if a test
     points ``path`` at a file that changes underfoot.
     """
     if path is None:
-        text = files("atmoresponse.assets.lut").joinpath("axes.json").read_text()
+        text = files("atmoresponse.assets.lut").joinpath(_BUNDLED_AXES[sensor]).read_text()
         return json.loads(text)
     with open(path) as f:
         return json.load(f)
@@ -460,11 +464,11 @@ def _geometry_specs(root, aero_idx, aerosol, axes, query, clamp=False):
     """(name, lo_idx, hi_idx, weight, is_log) for each of GEOMETRY_AXES at one query point.
 
     cwv and vza both bracket against only the levels actually POPULATED for this
-    aerosol model / cwv slice, never the full declared axis -- ``axes.json`` is
+    aerosol model / cwv slice, never the full declared axis. The axes file is
     append-only, so an abandoned planned point stays declared forever with zero
-    shards, and bracketing against it would raise on every query that doesn't
+    shards, and bracketing against it would raise on every query that does not
     land exactly on a populated node. One shared helper (used by both ``lookup``
-    and ``lookup_spectrum``) so the two can't diverge.
+    and ``lookup_spectrum``) so the two cannot diverge.
 
     ``clamp`` is threaded to each axis's ``_axis_spec``. The single-populated-CWV
     branch already holds out-of-range CWV at the one level regardless of
