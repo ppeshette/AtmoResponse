@@ -899,7 +899,9 @@ def _geometry_specs_batch(root, aero_idx, aerosol, axes, sza, vza, raa, cwv, ozo
     if len(cwv_indices) == 1:
         level = cwv_indices[0]
         level_value = float(cwv_values[level])
-        if np.any(np.abs(cwv - level_value) > 1e-9):
+        held = np.abs(cwv - level_value) > 1e-9
+        if np.any(held):
+            geo_oor |= held  # a single-level hold is a boundary hold, disclose it too
             warning_key = (root, aero_idx, level)
             if warning_key not in _SINGLE_CWV_WARNING_KEYS:
                 warnings.warn(
@@ -947,7 +949,8 @@ def lookup_spectrum_batch(sza, vza, raa, aerosol, cwv, ozone, aod, band_idx,
     sza/vza/raa/cwv/aod are equal-length 1-D arrays (one value per pixel); ozone
     and aerosol are scalar; band_idx is the shared 1-D exact-band vector. Returns
     ``({field: (n_pixels, n_bands)}, clamped (n,))`` where ``clamped`` marks
-    pixels held at a boundary node (only possible when ``clamp=True``).
+    pixels whose geometry/AOD was held at a boundary node (``clamp=True``) or
+    whose CWV was held at the only populated level.
 
     A permanent per-cell LUT gap (a documented 6S-unsolvable physics corner, not
     a bug) marks *that pixel's* whole row NaN and leaves every other pixel
@@ -1039,8 +1042,9 @@ def correct_spectrum_batch_from_lut(sun_z, sun_a, view_z, view_a, month, day, ae
     wl_um is the shared 1-D band-wavelength vector; L_obs is (n_pixels, n_bands);
     month/day/ozone scalar. Returns ``(reflectance (n, n_bands), gap (n,), clamped
     (n,))``: ``gap`` marks pixels whose bracket hit a permanent per-cell LUT gap
-    (their reflectance row is all-NaN); ``clamped`` marks pixels whose geometry or
-    AOD was held at a boundary node (only possible when ``clamp=True``)."""
+    (their reflectance row is all-NaN); ``clamped`` marks pixels whose
+    geometry/AOD was held at a boundary node (``clamp=True``) or whose CWV was
+    held at the only populated level."""
     axes = axes or load_axes()
     wl_um = np.asarray(wl_um, dtype=float)
     L_obs = np.asarray(L_obs, dtype=float)

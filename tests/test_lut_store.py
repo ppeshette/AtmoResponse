@@ -202,6 +202,22 @@ def test_batch_correct_matches_per_pixel_and_flags_gap(store):
     assert np.all(~np.isfinite(refl[1]))
 
 
+def test_batch_single_cwv_hold_is_flagged_as_clamped(store):
+    month, day = lut.doy_to_month_day(lut.REF_DOY)
+    wl_um = np.array([0.5, 0.6])
+    n = 2
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        _, _, clamped = lut.correct_spectrum_batch_from_lut(
+            np.zeros(n), np.zeros(n), np.full(n, 10.0), np.full(n, 90.0),
+            month, day, "Maritime", np.full(n, 0.1),
+            np.array([1.0, 2.5]),  # only CWV=1.0 is populated; 2.5 is held there
+            wl_um, np.ones((n, 2)), ozone=0.33, root=store, axes=AXES,
+        )
+    assert clamped.tolist() == [False, True]
+    assert any("only CWV=1.0 populated" in str(w.message) for w in caught)
+
+
 def test_batch_clamp_flags_clamped_pixels(store):
     month, day = lut.doy_to_month_day(lut.REF_DOY)
     wl_um = np.array([0.5, 0.6])
