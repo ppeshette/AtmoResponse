@@ -1,6 +1,5 @@
 {
  "description": "Atmospheric-response LUT axis definitions (index -> value, per axis). APPEND-ONLY: never reorder or remove a value, or every stored coefficient cell silently changes meaning. Index order is therefore not value order; sort by value at lookup.",
- "aerosol_reference": "6S aerosol model names",
  "axes": {
   "band": {
    "units": "nm",
