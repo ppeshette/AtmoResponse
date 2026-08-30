@@ -3,7 +3,7 @@ import datetime as dt
 from atmoresponse.cache import CacheConfig
 from atmoresponse.downloads import download_file
 from atmoresponse.catalog import SceneAssets, SceneRecord
-from atmoresponse.data import cache_scene_files
+from atmoresponse.data import cache_scene_files, local_scene_files
 from atmoresponse import tanager_data
 
 
@@ -146,3 +146,20 @@ def test_cache_scene_files_can_use_source_neutral_filenames(tmp_path):
 
     assert files.surface_reflectance == tmp_path / "scenes" / "scene-a" / "emit-reflectance.nc"
     assert files.surface_reflectance.read_bytes() == b"emit"
+
+
+def test_local_scene_files_wraps_existing_paths_without_download(tmp_path):
+    sr = tmp_path / "tanager-sr.h5"
+    emit = tmp_path / "emit.nc"
+    sr.write_bytes(b"sr")
+    emit.write_bytes(b"emit")
+
+    files = local_scene_files(
+        _scene_record(),
+        surface_reflectance=sr,
+        auxiliary={"emit": emit},
+    )
+
+    assert files.surface_reflectance == sr
+    assert files.surface_reflectance.read_bytes() == b"sr"
+    assert files.auxiliary == {"emit": emit}

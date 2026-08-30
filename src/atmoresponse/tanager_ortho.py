@@ -1,4 +1,4 @@
-"""Tanager HDF5 extraction utilities."""
+"""Tanager orthorectified scene-product readers."""
 
 from __future__ import annotations
 
@@ -11,6 +11,7 @@ import numpy as np
 from .aod import AodSummary, summarize_aod
 from .bands import band_index
 from .cache import CacheConfig
+from .cube import HyperspectralCube
 
 GRID = "HDFEOS/GRIDS/HYP/Data Fields/"
 
@@ -166,3 +167,42 @@ def reflectance_at(
     band_indices = np.array([band_index(wl, target) for target in targets_nm], dtype=int)
     reflectance = _slice_cube(sr_h5[GRID + "surface_reflectance"], band_indices, aoi, rows, cols)
     return wl[band_indices], reflectance
+
+
+def reflectance_cube(
+    sr_h5: h5py.File,
+    aoi=None,
+    rows=None,
+    cols=None,
+    valid_mask=None,
+    metadata=None,
+) -> HyperspectralCube:
+    """Read a Tanager surface-reflectance cube with wavelengths and optional mask."""
+
+    wl = wavelengths_nm(sr_h5, dataset="surface_reflectance")
+    values = _slice_cube(sr_h5[GRID + "surface_reflectance"], np.arange(wl.size), aoi, rows, cols)
+    return HyperspectralCube(
+        values=values,
+        wavelengths_nm=wl,
+        mask=valid_mask,
+        metadata=metadata or {"source": "tanager", "quantity": "surface_reflectance"},
+    )
+
+
+def radiance_cube(
+    l1_h5: h5py.File,
+    aoi=None,
+    rows=None,
+    cols=None,
+    metadata=None,
+) -> HyperspectralCube:
+    """Read a Tanager TOA-radiance cube with wavelengths and geometry."""
+
+    wl = wavelengths_nm(l1_h5, dataset="toa_radiance")
+    values = _slice_cube(l1_h5[GRID + "toa_radiance"], np.arange(wl.size), aoi, rows, cols)
+    return HyperspectralCube(
+        values=values,
+        wavelengths_nm=wl,
+        geometry=geometry(l1_h5, aoi=aoi, rows=rows, cols=cols),
+        metadata=metadata or {"source": "tanager", "quantity": "toa_radiance"},
+    )

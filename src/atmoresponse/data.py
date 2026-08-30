@@ -98,3 +98,22 @@ def cache_scene_files(
         metadata=metadata,
         auxiliary=auxiliary,
     )
+
+
+def local_scene_files(
+    scene: SceneRecord,
+    *,
+    surface_reflectance: str | Path | None = None,
+    radiance: str | Path | None = None,
+    metadata: str | Path | None = None,
+    auxiliary: Mapping[str, str | Path] | None = None,
+) -> LocalSceneFiles:
+    """Wrap already-local scene asset paths without downloading them."""
+
+    return LocalSceneFiles(
+        scene=scene,
+        surface_reflectance=Path(surface_reflectance) if surface_reflectance is not None else None,
+        radiance=Path(radiance) if radiance is not None else None,
+        metadata=Path(metadata) if metadata is not None else None,
+        auxiliary={name: Path(path) for name, path in (auxiliary or {}).items()},
+    )

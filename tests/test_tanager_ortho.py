@@ -2,13 +2,15 @@ import h5py
 import numpy as np
 
 from atmoresponse.cache import CacheConfig
-from atmoresponse.tanager_hdf5 import (
+from atmoresponse.tanager_ortho import (
     GRID,
     column_water_vapour,
     geometry,
     land_valid_mask,
+    radiance_cube,
     radiance_at,
     radiance_window,
+    reflectance_cube,
     reflectance_at,
     scene_paths,
     shipped_aod,
@@ -207,3 +209,24 @@ def test_reflectance_at_pixel_list_matches_aoi_block():
         _, scattered = reflectance_at(f, [600.0, 900.0], rows=rows.ravel(), cols=cols.ravel())
 
     np.testing.assert_array_equal(scattered.reshape(ROWS, COLS, 2), block)
+
+
+def test_reflectance_cube_returns_neutral_cube():
+    valid = np.ones((ROWS, COLS), dtype=bool)
+    with _fake_sr() as f:
+        cube = reflectance_cube(f, aoi=(0, ROWS, 0, COLS), valid_mask=valid)
+
+    assert cube.values.shape == (ROWS, COLS, len(WL_NM))
+    np.testing.assert_array_equal(cube.wavelengths_nm, WL_NM)
+    assert cube.mask is valid
+    assert cube.metadata == {"source": "tanager", "quantity": "surface_reflectance"}
+
+
+def test_radiance_cube_returns_neutral_cube_with_geometry():
+    with _fake_l1() as f:
+        cube = radiance_cube(f, aoi=(0, ROWS, 0, COLS))
+
+    assert cube.values.shape == (ROWS, COLS, len(WL_NM))
+    np.testing.assert_array_equal(cube.wavelengths_nm, WL_NM)
+    assert set(cube.geometry) == {"sun_z", "sun_a", "view_z", "view_a"}
+    assert cube.metadata == {"source": "tanager", "quantity": "toa_radiance"}
