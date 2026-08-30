@@ -47,6 +47,21 @@ Run the offline quickstart:
 python examples/quickstart.py
 ```
 
+## Recipe API
+
+Algorithm examples are exposed from `atmoresponse.recipes`. Import formula recipes directly from
+that package, and import full-spectrum helpers from their recipe modules:
+
+```python
+from atmoresponse.recipes import cyanobacteria_index
+from atmoresponse.recipes.sam import prepare_sam_classifier
+from atmoresponse.recipes.wildfire_sam import prepare_wildfire_sam
+```
+
+For repeated SAM scoring, prepare the fixed library once for a scene wavelength grid, then call
+`evaluate_many()` on band-last spectra. Use `selected_wavelengths_nm` when choosing which bands to
+read or atmospherically correct upstream.
+
 ## Data Access
 
 Default examples should run against public Planet STAC metadata and public Tanager scene assets.
@@ -68,9 +83,10 @@ when complete.
 ## Current Scaffold
 
 This scaffold defines the public import boundary while the full implementation is assembled.
-Shared scene models, a neutral hyperspectral cube, cache-backed downloads, source-neutral scene asset
-caching, explicit Tanager and EMIT catalog access, source-neutral surface classification, Tanager and
-EMIT adapters, shipped-AOD summaries, AOD reference-selection infrastructure, an AERONET AOD provider,
-LUT coefficient algebra, fixed-library SAM primitives, the bundled Malibu wildfire SAM library, and
-the RSI/WI, Wynne CI, and AlOH example algorithms are implemented. GOES/VIIRS/MERRA-2 aerosol
-providers, LUT storage, and full sensitivity evaluation are named but not yet implemented.
+Shared scene models, a neutral hyperspectral cube, cache-backed downloads, source-neutral scene
+asset caching, explicit Tanager and EMIT catalog access, source-neutral surface classification,
+Tanager and EMIT adapters, shipped-AOD summaries, AOD reference-selection infrastructure, an AERONET
+AOD provider, LUT coefficient algebra, fixed-library SAM primitives, the bundled wildfire SAM
+library, and the RSI/WI, Wynne CI, and AlOH example algorithms are implemented.
+GOES/VIIRS/MERRA-2 aerosol providers, LUT storage, and full sensitivity evaluation are named but not
+yet implemented.

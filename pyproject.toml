@@ -48,3 +48,4 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 "atmoresponse.assets.endmembers" = ["*.json", "*.npz"]
+"atmoresponse.assets.lut" = ["*.json"]
