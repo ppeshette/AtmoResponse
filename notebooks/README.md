@@ -12,6 +12,6 @@ Planned sections:
 5. Resolve external AOD.
 6. Compare LUT corrections.
 7. Run the continuous-output RSI walkthrough.
-8. Run the classifier SAM walkthrough.
+8. Run the classifier SAM walkthrough using a fixed public endmember library.
 9. Run shorter examples for Wynne CI and Cuprite AlOH.
 10. Export figure-ready values.

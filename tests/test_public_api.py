@@ -74,3 +74,12 @@ def test_low_level_helpers_are_not_root_exports():
     assert "reflectance_from_radiance" not in atmoresponse.__all__
     assert "resolve_aod" not in atmoresponse.__all__
     assert "evaluate_sensitivity" not in atmoresponse.__all__
+
+
+def test_recipes_exports_sam_module_not_individual_sam_helpers():
+    from atmoresponse import recipes
+
+    assert recipes.sam.__name__ == "atmoresponse.recipes.sam"
+    assert "sam" in recipes.__all__
+    assert "sam_angles" not in recipes.__all__
+    assert "labeled_sam_score" not in recipes.__all__
