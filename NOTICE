@@ -1,0 +1,15 @@
+AtmoResponse
+Copyright 2026 Paul Peshette
+
+This repository includes a small fixed endmember library for the Malibu wildfire SAM example:
+
+  src/atmoresponse/assets/endmembers/wildfire_vnir_sam_curated.npz
+
+The library contains 400-1300 nm surface-reflectance spectra derived from these public sources:
+
+  - USGS Digital Spectral Library splib06a (Clark et al. 2007)
+  - Landmann & Roy (2004), SAFARI 2000 Reflectance of Fire Residue,
+    Kruger National Park, Dry Season 2000, doi:10.3334/ORNLDAAC/751
+
+The adjacent JSON manifest records the packaged asset's source credits, wavelength range,
+selection method, and intended-use limit.

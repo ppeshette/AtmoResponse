@@ -53,6 +53,9 @@ Default examples should run against public Planet STAC metadata and public Tanag
 Some external aerosol references require user-owned credentials. Credentialed paths must fail with
 readable setup messages when credentials are absent.
 
+Bundled example spectra are limited to small fixed libraries with visible provenance. See `NOTICE`
+and the JSON manifests under `src/atmoresponse/assets/` for source credits and intended-use limits.
+
 AtmoResponse walks Planet's static Tanager STAC catalog directly. It does not require a STAC API
 server for catalog search.
 EMIT catalog searches use NASA CMR and can target either L2A reflectance or L1B radiance products.
