@@ -41,6 +41,10 @@ def test_domain_apis_stay_under_modules():
     assert callable(aod.gather_aod)
     assert callable(aod.best_aod)
     assert callable(aod.summarize_aod)
+    assert callable(aod.default_providers)
+    assert callable(aod.from_goes)
+    assert callable(aod.from_viirs)
+    assert callable(aod.from_merra2)
     assert callable(aeronet.from_aeronet)
     assert atmoresponse.HyperspectralCube is cube.HyperspectralCube
     assert atmoresponse.LandCoverSample is surface_classes.LandCoverSample

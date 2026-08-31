@@ -31,8 +31,11 @@ dependencies = [
 
 [project.optional-dependencies]
 live = [
+  "earthaccess>=0.10",
+  "netCDF4>=1.6",
   "pystac-client>=0.8",
   "requests>=2.31",
+  "xarray>=2024.1",
 ]
 geo = [
   "geopandas>=0.14",

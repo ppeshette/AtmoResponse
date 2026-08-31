@@ -2,16 +2,20 @@ import datetime as dt
 
 import pytest
 
+import atmoresponse.aod as aod_module
 from atmoresponse.aod import (
     AodEstimate,
     AodQuery,
     AodSource,
     agrees,
     best_aod,
+    default_providers,
     expected_error,
     gather_aod,
+    goes_candidates,
     resolve_aod,
     summarize_aod,
+    view_zenith_angle,
 )
 
 
@@ -104,6 +108,28 @@ def test_gather_aod_preserves_source_order_and_skips_missing_data():
     assert [ref.source for ref in refs] == [AodSource.GOES, AodSource.VIIRS]
 
 
+def test_gather_aod_skips_unavailable_sources_unless_strict():
+    providers = {
+        AodSource.AERONET: lambda query, cache: estimate(AodSource.AERONET),
+        AodSource.GOES: lambda query, cache: (_ for _ in ()).throw(RuntimeError("offline")),
+    }
+
+    refs = gather_aod(
+        QUERY,
+        providers=providers,
+        sources=(AodSource.GOES, AodSource.AERONET),
+    )
+
+    assert [ref.source for ref in refs] == [AodSource.AERONET]
+    with pytest.raises(RuntimeError, match="goes AOD provider failed"):
+        gather_aod(
+            QUERY,
+            providers=providers,
+            sources=(AodSource.GOES,),
+            strict=True,
+        )
+
+
 def test_best_aod_prefers_aeronet_when_available():
     refs = [
         estimate(AodSource.GOES, distance_km=1.0, dt_minutes=0.0),
@@ -133,6 +159,51 @@ def test_resolve_aod_uses_injected_providers():
     assert ref.source is AodSource.AERONET
 
 
-def test_resolve_aod_without_providers_is_explicit():
-    with pytest.raises(NotImplementedError, match="AOD resolution"):
-        resolve_aod(QUERY)
+def test_resolve_aod_without_providers_uses_built_ins(monkeypatch):
+    providers = {
+        AodSource.AERONET: lambda query, cache: None,
+        AodSource.GOES: lambda query, cache: estimate(AodSource.GOES, distance_km=1.0),
+    }
+    monkeypatch.setattr(aod_module, "default_providers", lambda sources: providers)
+
+    ref = resolve_aod(QUERY)
+
+    assert ref.source is AodSource.GOES
+
+
+def test_default_providers_includes_all_named_sources():
+    providers = default_providers()
+
+    assert set(providers) == {
+        AodSource.AERONET,
+        AodSource.GOES,
+        AodSource.VIIRS,
+        AodSource.MERRA2,
+    }
+
+
+def test_goes_candidates_are_visibility_and_geometry_limited():
+    west = goes_candidates(34.0, -118.0)
+    far_side = goes_candidates(27.6, 33.6)
+
+    assert west[0][0] in {"goes18", "goes17"}
+    assert far_side == []
+
+
+def test_view_zenith_angle_is_best_near_subsatellite_longitude():
+    near = view_zenith_angle(0.0, -75.2, -75.2)
+    oblique = view_zenith_angle(34.0, -118.0, -137.2)
+
+    assert near < 1.0
+    assert oblique > near
+
+
+def test_granule_offset_minutes_parses_earthdata_filename():
+    when = dt.datetime(2025, 1, 23, 18, 55)
+
+    offset = aod_module._granule_offset_minutes(
+        "AERDT_L2_VIIRS_SNPP.A2025023.1850.002.nc",
+        when,
+    )
+
+    assert offset == 5.0

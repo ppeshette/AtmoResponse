@@ -120,12 +120,13 @@ described in the report.
 This scaffold defines the public import boundary while the full implementation is assembled.
 Shared scene models, a neutral hyperspectral cube, cache-backed downloads, source-neutral scene
 asset caching, explicit Tanager and EMIT catalog access, source-neutral surface classification,
-Tanager and EMIT adapters, shipped-AOD summaries, AOD reference-selection infrastructure, an AERONET
-AOD provider, the LUT consumer layer, the LUT archive download helper (`download_lut`), per-sensor
+Tanager and EMIT adapters, shipped-AOD summaries, AOD reference selection from AERONET, GOES,
+VIIRS, and MERRA-2, the LUT consumer layer, the LUT archive download helper (`download_lut`), per-sensor
 sensitivity runners (`run_tanager`, `run_emit`), the figure primitives, fixed-library SAM
 primitives, the bundled wildfire SAM library, and the RSI/WI, Wynne CI, QAA v6 CDOM, and AlOH
 example algorithms are implemented.
-The GOES, VIIRS, and MERRA-2 aerosol providers are named but not yet implemented.
+GOES uses public NOAA buckets. VIIRS and MERRA-2 use Earthdata-backed live dependencies and
+credentials.
 
 ## Acknowledgements
 
