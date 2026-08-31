@@ -114,11 +114,12 @@ def test_gather_aod_skips_unavailable_sources_unless_strict():
         AodSource.GOES: lambda query, data_dir: (_ for _ in ()).throw(RuntimeError("offline")),
     }
 
-    refs = gather_aod(
-        QUERY,
-        providers=providers,
-        sources=(AodSource.GOES, AodSource.AERONET),
-    )
+    with pytest.warns(UserWarning, match="goes AOD provider skipped: offline"):
+        refs = gather_aod(
+            QUERY,
+            providers=providers,
+            sources=(AodSource.GOES, AodSource.AERONET),
+        )
 
     assert [ref.source for ref in refs] == [AodSource.AERONET]
     with pytest.raises(RuntimeError, match="goes AOD provider failed"):
@@ -207,3 +208,8 @@ def test_granule_offset_minutes_parses_earthdata_filename():
     )
 
     assert offset == 5.0
+
+
+def test_require_points_at_the_live_extra_when_a_dependency_is_missing():
+    with pytest.raises(ImportError, match=r'pip install "atmoresponse\[live\]"'):
+        aod_module._require("atmoresponse_missing_optional_dependency")

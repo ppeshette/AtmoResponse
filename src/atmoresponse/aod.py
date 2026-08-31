@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import datetime as dt
+import importlib
 import math
 import re
+import warnings
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -15,6 +17,22 @@ import numpy as np
 from .downloads import download_file
 from .geo import haversine_km
 from .storage import resolve_data_dir
+
+
+def _require(module: str):
+    """Import an optional dependency, or raise with the install hint.
+
+    GOES, VIIRS, and MERRA-2 retrieval need packages that ship in the ``live``
+    extra rather than the base install.
+    """
+
+    try:
+        return importlib.import_module(module)
+    except ImportError as exc:
+        raise ImportError(
+            f"the {module} package is required for this AOD provider. Install it with "
+            'pip install "atmoresponse[live]"'
+        ) from exc
 
 CO_LOCATED_KM = 25.0
 REGIONAL_KM = 100.0
@@ -234,7 +252,7 @@ def from_viirs(query: AodQuery, data_dir: str | Path | None = None) -> AodEstima
 def from_merra2(query: AodQuery, data_dir: str | Path | None = None) -> AodEstimate | None:
     """Return MERRA-2 total aerosol extinction AOD550 for the nearest cell and hour."""
 
-    import xarray as xr
+    xr = _require("xarray")
 
     path = _fetch_merra2(query, _reference_dir(data_dir))
     if path is None:
@@ -300,7 +318,7 @@ def goes_candidates(latitude: float, longitude: float) -> list[tuple[str, float]
 def from_goes(query: AodQuery, data_dir: str | Path | None = None) -> AodEstimate | None:
     """Return NOAA GOES ABI full-disk AOD550 from the nearest usable pixel."""
 
-    from netCDF4 import Dataset
+    Dataset = _require("netCDF4").Dataset
 
     max_dt_minutes = _max_dt_minutes(query, 30.0)
     when = _when_utc_naive(query.when)
@@ -439,7 +457,7 @@ def _list_goes_keys(
 
 
 def _fetch_merra2(query: AodQuery, reference_dir: Path) -> Path | None:
-    import earthaccess
+    earthaccess = _require("earthaccess")
 
     when = _when_utc_naive(query.when)
     day = when.strftime("%Y-%m-%d")
@@ -463,7 +481,7 @@ def _fetch_earthdata_granule(
     max_dt_minutes: float,
     reference_dir: Path,
 ) -> tuple[Path, float] | None:
-    import earthaccess
+    earthaccess = _require("earthaccess")
 
     when = _when_utc_naive(query.when)
     day = when.strftime("%Y-%m-%d")
@@ -572,6 +590,7 @@ def gather_aod(
         except Exception as exc:
             if strict:
                 raise RuntimeError(f"{source.value} AOD provider failed") from exc
+            warnings.warn(f"{source.value} AOD provider skipped: {exc}", stacklevel=2)
             continue
         if estimate is not None:
             estimates.append(estimate)
