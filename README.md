@@ -91,8 +91,21 @@ which is what makes a full-scene comparison at two AOD values tractable.
 
 The package ships only the axis definitions, `src/atmoresponse/assets/lut/axes_tanager.json` and
 `axes_emit.json`. The coefficient store is large and is distributed separately as a per-sensor
-archive. Point `LUT_STORE_TANAGER` or `LUT_STORE_EMIT` at the unpacked archive, or pass its
-directory to `run_tanager` or `run_emit` as `lut=`. The archive location is given with the release.
+archive on Zenodo. Fetch and unpack it with `download_lut`:
+
+```python
+from atmoresponse.downloads import download_lut
+
+store = download_lut("tanager")            # into the default cache, idempotent
+result = run_tanager(..., lut=store)
+```
+
+`download_lut` returns the store directory (the one containing `shards/`). Point
+`LUT_STORE_TANAGER` or `LUT_STORE_EMIT` at it instead, or pass it to `run_tanager` or `run_emit`
+as `lut=`. The Tanager and EMIT tables are Zenodo records
+[10.5281/zenodo.22210933](https://doi.org/10.5281/zenodo.22210933) and
+[10.5281/zenodo.22210726](https://doi.org/10.5281/zenodo.22210726); pass `url=` to fetch a
+different archive.
 
 The pipeline that generated the tables (the 6S forward-model driver and the shard store layout) is
 not part of this release. It may be published separately at a later date. The method itself is

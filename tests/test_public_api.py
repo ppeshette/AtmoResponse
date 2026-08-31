@@ -47,6 +47,7 @@ def test_domain_apis_stay_under_modules():
     assert atmoresponse.SurfaceClassification is surface_classes.SurfaceClassification
     assert callable(data.cache_scene_files)
     assert callable(downloads.download_file)
+    assert callable(downloads.download_lut)
     assert callable(geo.haversine_km)
     assert callable(lut.reflectance_from_radiance)
     assert callable(aod.resolve_aod)
