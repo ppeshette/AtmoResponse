@@ -13,6 +13,7 @@ local caches, and credentials do not.
 |---|---|
 | `src/atmoresponse/` | Installable Python package |
 | `src/atmoresponse/recipes/` | Published algorithm examples used by the submission |
+| `src/atmoresponse/masks.py` | Mask composition helpers for recipe outputs and scene validity gates |
 | `tests/` | Offline smoke tests and formula fixtures |
 | `notebooks/` | Annotated executable walkthrough |
 | `report/` | Memo, method notes, acquisition targets, and figure captions |
@@ -61,6 +62,9 @@ from atmoresponse.recipes.wildfire_sam import prepare_wildfire_sam
 For repeated SAM scoring, prepare the fixed library once for a scene wavelength grid, then call
 `evaluate_many()` on band-last spectra. Use `selected_wavelengths_nm` when choosing which bands to
 read or atmospherically correct upstream.
+
+`atmoresponse.recipes.water` exposes MNDWI as a recipe. `atmoresponse.masks` combines recipe outputs
+with cloud, nodata, LUT-coverage, and finite-input validity gates.
 
 ## Data Access
 
@@ -117,8 +121,15 @@ This scaffold defines the public import boundary while the full implementation i
 Shared scene models, a neutral hyperspectral cube, cache-backed downloads, source-neutral scene
 asset caching, explicit Tanager and EMIT catalog access, source-neutral surface classification,
 Tanager and EMIT adapters, shipped-AOD summaries, AOD reference-selection infrastructure, an AERONET
-AOD provider, the LUT consumer layer, per-sensor sensitivity runners (`run_tanager`, `run_emit`),
-the figure primitives, fixed-library SAM primitives, the bundled wildfire SAM library, and the
-RSI/WI, Wynne CI, QAA v6 CDOM, and AlOH example algorithms are implemented.
-The GOES, VIIRS, and MERRA-2 aerosol providers and the LUT archive download helper are named but
-not yet implemented.
+AOD provider, the LUT consumer layer, the LUT archive download helper (`download_lut`), per-sensor
+sensitivity runners (`run_tanager`, `run_emit`), the figure primitives, fixed-library SAM
+primitives, the bundled wildfire SAM library, and the RSI/WI, Wynne CI, QAA v6 CDOM, and AlOH
+example algorithms are implemented.
+The GOES, VIIRS, and MERRA-2 aerosol providers are named but not yet implemented.
+
+## Acknowledgements
+
+AI coding assistants were central to this work, principally Anthropic's Claude Code and OpenAI's
+Codex. They supported implementation, code review, and analysis throughout the project, and I am
+grateful for their availability as tools for research. I wrote, edited, or reviewed all code published
+in this repository.
