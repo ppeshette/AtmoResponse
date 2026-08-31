@@ -1,6 +1,6 @@
 """Published algorithm examples used by AtmoResponse."""
 
-from . import sam, wildfire_sam
+from . import endmembers, sam, wildfire_sam
 from .adapters import as_algorithm
 from .agriculture import canopy_chlorophyll_rsi, vegetation_water_indices
 from .cdom import cdom_absorption
@@ -13,6 +13,7 @@ __all__ = [
     "canopy_chlorophyll_rsi",
     "cdom_absorption",
     "cyanobacteria_index",
+    "endmembers",
     "sam",
     "vegetation_water_indices",
     "wildfire_sam",

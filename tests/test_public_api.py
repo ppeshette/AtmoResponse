@@ -91,7 +91,11 @@ def test_recipes_exports_sam_modules_not_individual_sam_helpers():
 
     assert recipes.sam.__name__ == "atmoresponse.recipes.sam"
     assert recipes.wildfire_sam.__name__ == "atmoresponse.recipes.wildfire_sam"
+    assert recipes.endmembers.__name__ == "atmoresponse.recipes.endmembers"
     assert "sam" in recipes.__all__
     assert "wildfire_sam" in recipes.__all__
+    assert "endmembers" in recipes.__all__
     assert "sam_angles" not in recipes.__all__
     assert "labeled_sam_score" not in recipes.__all__
+    assert "endmembers_from_labels" not in recipes.__all__
+    assert callable(recipes.endmembers.endmembers_from_labels)
