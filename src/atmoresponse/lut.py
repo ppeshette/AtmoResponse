@@ -1,29 +1,31 @@
 """Atmospheric-response LUT: axis definitions, the shard store, and the algebra
 that turns a stored cell into surface reflectance (or back).
 
-This module is the store half. numpy + stdlib only, so it stays importable in a
-minimal environment; the 6S runs that fill the table are not part of the public
-package.
+This module is the store half. It uses numpy and the standard library only, so it
+stays importable in a minimal environment. The 6S runs that fill the table are
+not part of the public package.
 
 What a cell holds. Six numbers per (key, aod, band), in two equivalent forms:
 
-- ``xa``/``xb``/``xc`` -- 6S's own radiance-inversion coefficients::
+- ``xa``, ``xb``, and ``xc``, which are 6S's own radiance-inversion
+  coefficients::
 
-      rho -> L :  y = rho / (1 - xc*rho) ;  L = (y + xb) / xa
-      L -> rho :  y = xa*L - xb          ;  rho = y / (1 + xc*y)
+      rho -> L :  y = rho / (1 - xc*rho),  L = (y + xb) / xa
+      L -> rho :  y = xa*L - xb,           rho = y / (1 + xc*y)
 
-- ``path``/``trans``/``sphalb`` -- the same physics in pure reflectance space::
+- ``path``, ``trans``, and ``sphalb``, the same physics in pure reflectance
+  space::
 
       rho_toa = path + trans * rho / (1 - sphalb * rho)
 
-  Carried alongside because the solver computes them first and because they are
-  the date-independent half (see below).
+  These are carried alongside because the solver computes them first and because
+  they are the date-independent half (see below).
 
 **Earth-Sun distance is not an axis.** It scales TOA solar irradiance by 1/d^2
-and nothing else -- it does not touch the atmosphere's optical properties. So
-``path``/``trans``/``sphalb`` are entirely date-free; only ``xa``/``xb`` inherit a
-date, because they fold the radiance<->reflectance conversion into the
-atmospheric inversion. Cells are generated at ``REF_DOY`` and
+and nothing else. It does not touch the atmosphere's optical properties, so
+``path``, ``trans``, and ``sphalb`` are entirely date-free. Only ``xa`` and
+``xb`` inherit a date, because they fold the radiance-to-reflectance conversion
+into the atmospheric inversion. Cells are generated at ``REF_DOY``, and
 ``normalise_radiance()`` applies the scalar ``(d_obs/d_ref)**2`` at lookup.
 """
 from __future__ import annotations
@@ -42,15 +44,15 @@ from importlib.resources import files
 import numpy as np
 
 # The LUT is a per-sensor archive, downloaded separately and never shipped with
-# the package. Point LUT_STORE_TANAGER / LUT_STORE_EMIT at the unpacked archive
-# for each sensor, or pass a directory as ``lut=`` to run_tanager / run_emit.
+# the package. Point LUT_STORE_TANAGER or LUT_STORE_EMIT at the unpacked archive
+# for that sensor, or pass a directory as ``lut=`` to run_tanager or run_emit.
 LUT_STORE_TANAGER = os.environ.get("LUT_STORE_TANAGER", "lut_store_tanager")
 SHARD_ROOT_TANAGER = os.path.join(LUT_STORE_TANAGER, "shards")
 
 LUT_STORE_EMIT = os.environ.get("LUT_STORE_EMIT", "lut_store_emit")
 SHARD_ROOT_EMIT = os.path.join(LUT_STORE_EMIT, "shards")
 
-# Axes that key a shard (what generation parallelises over) vs. axes swept inside
+# Axes that key a shard (what generation parallelises over) versus axes swept inside
 # one shard. Adding a key axis writes new shards and rewrites nothing.
 KEY_AXES = ("sza", "vza", "raa", "aerosol", "cwv", "ozone")
 CELL_AXES = ("aod", "band")
@@ -59,28 +61,28 @@ CELL_AXES = ("aod", "band")
 # keys, shards store exactly these arrays.
 COEF_FIELDS = ("xa", "xb", "xc", "path", "trans", "sphalb")
 
-# Optional, additive per-cell fields beyond COEF_FIELDS -- upward-only
-# transmittance for a fire-emission forward model. NEVER required by read_shard;
-# an older shard simply lacks them. Check presence (``"trans_up_gas" in shard``)
-# before use.
+# Optional, additive per-cell fields beyond COEF_FIELDS, for the upward-only
+# transmittance a fire-emission forward model needs. These are never required by
+# read_shard, and an older shard simply lacks them. Check presence
+# (``"trans_up_gas" in shard``) before use.
 EXTRA_FIELDS = ("trans_up_gas", "trans_up_scatter", "trans_up_ch4", "trans_up_water")
 
-# A cell's status. UNATTEMPTED and FAILED are both NaN; separating them makes
-# "what fraction of this shard failed?" answerable. Only STATUS_OK cells are ever
+# A cell's status. UNATTEMPTED and FAILED are both NaN. Separating them makes
+# "what fraction of this shard failed" answerable. Only STATUS_OK cells are ever
 # read back as values.
 STATUS_OK = 0
 STATUS_UNATTEMPTED = 1
 STATUS_FAILED = 2
 
-# Simulation date all cells are generated at; see the module docstring.
+# Simulation date all cells are generated at. See the module docstring.
 REF_DOY = 182
 
 # Matches the solver's ozone default. Duplicated, not imported, to keep this
 # module free of the 6S dependency.
 DEFAULT_OZONE_ATM_CM = 0.33
 
-# Days elapsed before each month, non-leap; 6S takes month/day, the rest of this
-# codebase takes a day of year.
+# Days elapsed before each month, non-leap. 6S takes month and day, the rest of
+# this codebase takes a day of year.
 _DAYS_BEFORE_MONTH = (0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365)
 
 
@@ -127,7 +129,7 @@ def radiance_from_reflectance(xa, xb, xc, rho):
 
 
 def toa_from_surface(path, trans, sphalb, rho):
-    """Reflectance-space forward model -- the date-free form of the same cell."""
+    """Reflectance-space forward model, the date-free form of the same cell."""
     rho = np.asarray(rho, dtype=float)
     return (np.asarray(path, dtype=float)
             + np.asarray(trans, dtype=float) * rho / (1.0 - np.asarray(sphalb, dtype=float) * rho))
@@ -136,7 +138,7 @@ def toa_from_surface(path, trans, sphalb, rho):
 @dataclass(frozen=True)
 class CorrectionCoefficients:
     """One LUT cell's radiance-inversion coefficients, as a convenience wrapper
-    around the bare ``xa``/``xb``/``xc`` module functions."""
+    around the bare ``xa``, ``xb``, and ``xc`` module functions."""
 
     xa: float
     xb: float
@@ -186,7 +188,7 @@ def band_table(axes):
 
 def nearest_band_index(axes, wl_um):
     """The sensor's fixed band whose centre is closest to ``wl_um``. Never
-    interpolated -- the sensor's band grid is a fixed property."""
+    interpolated, because the sensor's band grid is a fixed property."""
     centre_nm, _ = band_table(axes)
     return int(np.argmin(np.abs(centre_nm - float(wl_um) * 1000.0)))
 
@@ -197,17 +199,17 @@ SHARD_RE = re.compile(r"^shard_(\d+)\.npz$")
 
 
 def _shard_name(shard_id):
-    """Zero-padded to 9 digits; nothing depends on the width. Overflow is safe --
-    the name grows a digit and ``SHARD_RE`` still parses it. Do not change the
-    padding width on a populated store: the same numeric id at two widths is two
-    files claiming one id, which ``scan_shards`` rejects."""
+    """Zero-padded to 9 digits, though nothing depends on the width. Overflow is
+    safe, the name just grows a digit and ``SHARD_RE`` still parses it. Do not
+    change the padding width on a populated store: the same numeric id at two
+    widths is two files claiming one id, which ``scan_shards`` rejects."""
     return f"shard_{shard_id:09d}.npz"
 
 
 def read_shard(path):
-    """Read one shard. EXTRA_FIELDS keys are included only if present in the file
-    -- check with ``"trans_up_gas" in shard``, don't assume presence the way
-    COEF_FIELDS' presence can be assumed."""
+    """Read one shard. EXTRA_FIELDS keys are included only if present in the file.
+    Check with ``"trans_up_gas" in shard``, and do not assume they are present
+    the way the COEF_FIELDS keys can be assumed."""
     d = np.load(path, allow_pickle=False)
     key = {str(n): int(i) for n, i in zip(d["key_names"], d["key_idx"])}
     out = {f: d["path_refl" if f == "path" else f] for f in COEF_FIELDS}
@@ -221,7 +223,7 @@ def read_shard(path):
 def scan_shards(root=SHARD_ROOT_TANAGER):
     """key tuple -> (shard_id, path), read from the shards themselves.
 
-    This is the record; any manifest is only an index over it.
+    This is the record. Any manifest is only an index over it.
     """
     found = {}
     seen_ids = {}
@@ -233,8 +235,9 @@ def scan_shards(root=SHARD_ROOT_TANAGER):
         if shard_id in seen_ids:
             raise ValueError(
                 f"duplicate shard id {shard_id}: {seen_ids[shard_id]} and {path}. "
-                f"Two files claim one id -- usually the padding width was changed "
-                f"on a populated store. Ids must be unique; resolve by hand.")
+                f"Two files claim one id, usually because the padding width was "
+                f"changed on a populated store. Ids must be unique, so resolve "
+                f"by hand.")
         seen_ids[shard_id] = path
         d = np.load(path, allow_pickle=False)
         found[tuple(int(i) for i in d["key_idx"])] = (shard_id, path)
@@ -255,13 +258,14 @@ def scan_shards(root=SHARD_ROOT_TANAGER):
 GEOMETRY_AXES = ("sza", "vza", "raa", "cwv", "ozone")
 
 # Interpolation is two independent knobs per axis:
-#   x-space -- the coordinate a lookup interpolates ALONG (theta vs cos theta;
-#              aod vs log aod). Not the same as where the grid points sit.
-#   y-space -- whether the coefficient or its log is the interpolated quantity
+#   x-space is the coordinate a lookup interpolates ALONG (theta versus cos
+#              theta, aod versus log aod). Not the same as where the grid points
+#              sit.
+#   y-space is whether the coefficient or its log is the interpolated quantity
 #              (per COEF_FIELDS field, falling back to linear where a value is
-#              not strictly positive -- see ``_lerp_fields``).
-# Measured, crossing both knobs, at the grid's own values: sza/vza/raa want
-# cos + log; aod wants log + log; cwv wants linear + linear. Never extend one
+#              not strictly positive, see ``_lerp_fields``).
+# Measured, crossing both knobs, at the grid's own values: sza, vza, and raa want
+# cos and log, aod wants log and log, cwv wants linear and linear. Never extend one
 # axis's verdict to another. ``ozone`` (a single tabulated value) is kept
 # linear + linear as the conservative default.
 _AXIS_XVAR = {
@@ -275,8 +279,8 @@ _AXIS_XVAR = {
 _AXIS_LOG = {"sza": True, "vza": True, "raa": True, "cwv": False, "ozone": False, "aod": True}
 
 # Vectorized twin of ``_AXIS_XVAR`` (same x-space per axis, np-array-safe) for the
-# batch lookup path -- kept separate rather than generalizing the scalar dict, the
-# same reason ``fold_raa_array`` is separate from ``fold_raa``.
+# batch lookup path. Kept separate rather than generalizing the scalar dict, for
+# the same reason ``fold_raa_array`` is separate from ``fold_raa``.
 _AXIS_XVAR_NP = {
     "sza": lambda v: np.cos(np.radians(v)),
     "vza": lambda v: np.cos(np.radians(v)),
@@ -293,9 +297,9 @@ _SINGLE_CWV_WARNING_KEYS = set()
 
 
 def clear_shard_cache():
-    """Drop cached shard reads. Call this if the store changes underfoot -- new
-    shards are being written while this module reads the same root, or a test
-    points ``root`` at a scratch store and back."""
+    """Drop cached shard reads. Call this if the store changes underfoot, for
+    instance new shards being written while this module reads the same root, or
+    a test that points ``root`` at a scratch store and back."""
     _SHARD_CACHE.clear()
     _CWV_LEVEL_CACHE.clear()
     _VZA_LEVEL_CACHE.clear()
@@ -307,7 +311,7 @@ def _sorted_axis(axes, name):
     """[(value, original_index), ...] ascending by value.
 
     Axis value lists are append-only (see ``load_axes``), so index order is not
-    value order -- every bracket has to sort first.
+    value order, so every bracket has to sort first.
     """
     vals = axes["axes"][name]["values"]
     order = sorted(range(len(vals)), key=lambda i: float(vals[i]))
@@ -324,7 +328,7 @@ def _warn_clamp(name, requested, held_at):
     key = (name, requested > held_at)
     if key not in _CLAMP_WARNING_KEYS:
         warnings.warn(
-            f"{name}={requested} is outside the LUT's tabulated range; held at the "
+            f"{name}={requested} is outside the LUT's tabulated range, held at the "
             f"nearest node {held_at}. clamp=True was requested.",
             RuntimeWarning, stacklevel=3,
         )
@@ -332,14 +336,14 @@ def _warn_clamp(name, requested, held_at):
 
 
 def _bracket(sorted_pairs, x):
-    """(lo_idx, hi_idx, lo_val, hi_val) bracketing x; ``lo_idx == hi_idx`` at an
+    """(lo_idx, hi_idx, lo_val, hi_val) bracketing x. ``lo_idx == hi_idx`` at an
     exact grid value (or a single-point axis), so interpolation reduces to
-    identity there -- required by the rule that narrow-differencing algorithms
-    must be read at tabulated AOD values.
+    identity there, as the rule that narrow-differencing algorithms must be read
+    at tabulated AOD values requires.
 
     Raises outside the tabulated range: this is the strict backstop. A caller
     that wants a query beyond the grid served rather than refused passes
-    ``clamp=True`` to a ``lookup*``/``correct_*`` entry point, which snaps the
+    ``clamp=True`` to a ``lookup`` or ``correct`` entry point, which snaps the
     value to the nearest boundary node (a held edge cell, never a linearly
     extrapolated one) and warns before this function is reached.
     """
@@ -358,7 +362,7 @@ def _bracket(sorted_pairs, x):
 
 def _lerp_fields(lo, hi, w, log_axis):
     """Blend two coefficient dicts at weight w in [0, 1]. Per COEF_FIELDS field,
-    not per cell -- log interpolation is only safe where both endpoints are
+    not per cell, because log interpolation is only safe where both endpoints are
     strictly positive, and that can differ field by field."""
     if w == 0.0:
         return lo
@@ -378,8 +382,8 @@ def _lerp_array_fields(lo, hi, w, log_axis):
     ``w`` may be a scalar (the per-pixel ``lookup_spectrum`` path) or a per-pixel
     weight array broadcastable against the ``(n_pixels, n_bands)`` field arrays
     (the ``lookup_spectrum_batch`` path). The scalar-zero fast path is kept for
-    the former; an array ``w`` -- even all-zero -- goes through the blend, which
-    is numerically identical at ``w == 0``."""
+    the former. An array ``w``, even all-zero, goes through the blend, which is
+    numerically identical at ``w == 0``."""
     if np.ndim(w) == 0 and w == 0.0:
         return lo
     out = {}
@@ -402,7 +406,7 @@ def _cached_shard(root, key_idx):
 
     ``scan_shards`` re-globs every call rather than being cached itself: the
     store may be gaining shards while this module reads it, and a stale directory
-    listing would silently hide newly finished geometry. Re-globbing is cheap;
+    listing would silently hide newly finished geometry. Re-globbing is cheap, and
     the shard payloads are what is worth caching.
     """
     key_tuple = tuple(key_idx[a] for a in KEY_AXES)
@@ -411,8 +415,8 @@ def _cached_shard(root, key_idx):
         found = scan_shards(root)
         if key_tuple not in found:
             raise ValueError(
-                f"no shard for key {dict(zip(KEY_AXES, key_tuple))} under {root} "
-                f"-- not generated yet ({len(found)} shard(s) on disk)")
+                f"no shard for key {dict(zip(KEY_AXES, key_tuple))} under {root}, "
+                f"not generated yet ({len(found)} shard(s) on disk)")
         shard = read_shard(found[key_tuple][1])
         shard["_aod_pos"] = {int(a): p for p, a in enumerate(shard["aod_idx"])}
         shard["_band_pos"] = {int(b): p for p, b in enumerate(shard["band_idx"])}
@@ -468,7 +472,7 @@ def _geometry_specs(root, aero_idx, aerosol, axes, query, clamp=False):
     """(name, lo_idx, hi_idx, weight, is_log) for each of GEOMETRY_AXES at one query point.
 
     cwv and vza both bracket against only the levels actually POPULATED for this
-    aerosol model / cwv slice, never the full declared axis. The axes file is
+    aerosol model or cwv slice, never the full declared axis. The axes file is
     append-only, so an abandoned planned point stays declared forever with zero
     shards, and bracketing against it would raise on every query that does not
     land exactly on a populated node. One shared helper (used by both ``lookup``
@@ -489,7 +493,7 @@ def _geometry_specs(root, aero_idx, aerosol, axes, query, clamp=False):
             warning_key = (root, aero_idx, level)
             if warning_key not in _SINGLE_CWV_WARNING_KEYS:
                 warnings.warn(
-                    f"LUT has only CWV={level_value} populated for aerosol {aerosol!r}; "
+                    f"LUT has only CWV={level_value} populated for aerosol {aerosol!r}, "
                     f"holding requested CWV={query['cwv']} at that level rather than "
                     "interpolating a missing bracket.",
                     RuntimeWarning,
@@ -520,7 +524,7 @@ def _geometry_specs(root, aero_idx, aerosol, axes, query, clamp=False):
 
 def shard_keys_needed(root, aero_idx, aerosol, axes, sza, vza, raa, cwv, ozone):
     """Every KEY_AXES shard combination a population of geometry queries could
-    touch -- the cartesian product of each non-degenerate axis's bracket corners
+    touch, the cartesian product of each non-degenerate axis's bracket corners
     (``_geometry_specs``), unioned over every query. Read-only: never reads a
     shard payload, so this is cheap to run over a whole scene's per-pixel
     geometry.
@@ -529,12 +533,12 @@ def shard_keys_needed(root, aero_idx, aerosol, axes, sza, vza, raa, cwv, ozone):
     process's ``_SHARD_CACHE`` starts empty, and letting each one discover shards
     independently both loses the warm-cache speedup a serial run gets on
     spatially-coherent pixels and adds disk contention. For a single
-    scene/AOI/aerosol the real touched set is typically a handful of shards.
+    scene, AOI, and aerosol the real touched set is typically a handful of shards.
     Callers should read the result with ``read_shards()`` in the main process
     once and hand it to each worker via ``install_shards()``.
 
-    Query arrays are rounded before deduplication (3 dp for sza/vza/raa, 4 for
-    cwv/ozone): real per-pixel geometry varies continuously, so without rounding
+    Query arrays are rounded before deduplication (3 dp for sza, vza, and raa, 4 for
+    cwv and ozone): real per-pixel geometry varies continuously, so without rounding
     almost every pixel would count as a distinct query even though most bracket
     identically.
     """
@@ -555,9 +559,9 @@ def shard_keys_needed(root, aero_idx, aerosol, axes, sza, vza, raa, cwv, ozone):
                                     {"sza": s, "vza": v, "raa": r, "cwv": c, "ozone": o})
         except ValueError:
             # Out of the tabulated range, or nothing generated yet for this
-            # aerosol -- best-effort preload, so skip rather than abort. The real
+            # aerosol, so this best-effort preload skips rather than aborts. The real
             # per-pixel lookup still raises its own clear error later if this
-            # combination turns out to be genuinely needed and genuinely invalid.
+            # combination turns out to be both needed and invalid.
             continue
         axis_options = [{lo_i, hi_i} for _name, lo_i, hi_i, _w, _log in specs]
         for combo in itertools.product(*axis_options):
@@ -569,7 +573,7 @@ def shard_keys_needed(root, aero_idx, aerosol, axes, sza, vza, raa, cwv, ozone):
 
 def read_shards(root, key_tuples):
     """Read every shard named by ``key_tuples`` (KEY_AXES order) fresh from disk,
-    independent of ``_SHARD_CACHE`` -- returns a plain ``{key_tuple: shard}`` dict
+    independent of ``_SHARD_CACHE``, returning a plain ``{key_tuple: shard}`` dict
     a caller can hand to another process's cache via ``install_shards()``. A key
     with no shard on disk is silently skipped (this function is a preload
     optimization, never load-bearing for correctness)."""
@@ -587,8 +591,9 @@ def read_shards(root, key_tuples):
 
 def install_shards(root, shards):
     """Populate this process's ``_SHARD_CACHE`` from an already-read shard dict
-    (``read_shards``'s output) -- the worker side of preloading, called once per
-    worker at startup instead of each worker discovering shards lazily from disk.
+    (``read_shards``'s output). This is the worker side of preloading, called once
+    per worker at startup instead of each worker discovering shards lazily from
+    disk.
     A no-op for any key already cached."""
     for key_tuple, shard in shards.items():
         _SHARD_CACHE.setdefault((root, key_tuple), shard)
@@ -598,8 +603,8 @@ def _shard_cell(shard, aod_idx, band_idx):
     """One (aod_idx, band_idx) cell's coefficients from an already-read shard.
 
     Raises rather than returning the stored NaN for an unattempted or failed
-    cell -- a silently propagated NaN would be indistinguishable from "this band
-    happens to be near zero" once it reaches an algorithm.
+    cell, because a silently propagated NaN would be indistinguishable from "this
+    band happens to be near zero" once it reaches an algorithm.
     """
     if aod_idx not in shard["_aod_pos"] or band_idx not in shard["_band_pos"]:
         raise ValueError(f"shard for key {shard['key']} does not cover "
@@ -618,7 +623,7 @@ def _combine_axes(leaf, specs, interpolate=_lerp_fields):
     """Recursively interpolate one KEY axis at a time.
 
     ``specs`` is a list of (name, lo_idx, hi_idx, weight, is_log) for the axes
-    still to resolve; ``leaf(idx_dict)`` returns the coefficient dict once all of
+    still to resolve. ``leaf(idx_dict)`` returns the coefficient dict once all of
     them are pinned to a single index. This is the standard multilinear
     extension of the per-axis rule. Treat the composed error as bounded by the
     worst single axis involved, not verified tighter.
@@ -635,9 +640,9 @@ def _combine_axes(leaf, specs, interpolate=_lerp_fields):
 
 
 def _axis_spec(axes, name, value, sorted_pairs=None, clamp=False):
-    """(lo_idx, hi_idx, weight, is_log) for one axis at one query value -- the
-    single place ``_AXIS_XVAR``/``_AXIS_LOG`` get applied, so a KEY axis and the
-    CELL axis (aod) interpolate through identical code. ``weight`` is computed in
+    """(lo_idx, hi_idx, weight, is_log) for one axis at one query value. This is the
+    single place ``_AXIS_XVAR`` and ``_AXIS_LOG`` get applied, so a KEY axis and
+    the CELL axis (aod) interpolate through identical code. ``weight`` is computed in
     the axis's own x-space, never in the raw value.
 
     ``clamp=True`` snaps a query beyond the axis's own range to the nearest
@@ -669,14 +674,14 @@ def lookup(sza, vza, raa, aerosol, cwv, ozone, aod, band_idx, root=SHARD_ROOT_TA
     discrete set of named models, not a continuum, so it is matched rather than
     bracketed. The models are themselves fixed mixtures of a few fundamental
     components, so a continuous aerosol axis is possible in principle by
-    tabulating custom component blends -- a possible future expansion, not what
+    tabulating custom component blends, a possible future expansion and not what
     this axis is today. ``band_idx`` is exact too (the sensor's fixed band grid
-    is never interpolated -- resolve a wavelength with ``nearest_band_index``).
+    is never interpolated, so resolve a wavelength with ``nearest_band_index``).
     Every other argument brackets and interpolates.
 
     Raises ValueError on a coordinate outside the tabulated range (unless
     ``clamp=True``, which holds it at the nearest boundary node and warns), an
-    ungenerated shard, or an unsolved cell -- never returns a silent NaN.
+    ungenerated shard, or an unsolved cell. It never returns a silent NaN.
     """
     axes = axes or load_axes()
     aerosol_values = axes["axes"]["aerosol"]["values"]
@@ -748,7 +753,7 @@ def lookup_spectrum(sza, vza, raa, aerosol, cwv, ozone, aod, band_idx,
 def fold_raa(view_a, sun_a):
     """Two absolute azimuths -> the LUT's relative-azimuth axis, in [0, 180].
 
-    Cells are generated at solar_azimuth=0; the (solar_a=0, view_a=raa)
+    Cells are generated at solar_azimuth=0. The (solar_a=0, view_a=raa)
     reduction was verified exact for absolute-azimuth pairs sharing a relative
     angle, which is what makes this fold valid rather than an approximation.
     """
@@ -757,7 +762,7 @@ def fold_raa(view_a, sun_a):
 
 
 def fold_raa_array(view_a, sun_a):
-    """Vectorized twin of ``fold_raa`` -- same formula, array-safe. Kept separate
+    """Vectorized twin of ``fold_raa``, same formula, array-safe. Kept separate
     rather than generalizing ``fold_raa`` itself: that function's scalar contract
     is relied on elsewhere, and ``np.where`` on a scalar condition returns a 0-d
     array, not a plain float."""
@@ -772,8 +777,8 @@ def correct_from_lut(sun_z, sun_a, view_z, view_a, month, day, aero_profile,
 
     ``aero_profile`` is a LUT axis-value string (e.g. "Maritime"). Two things a
     real 6S run gets for free that this does explicitly: relative azimuth (the
-    LUT keys on raa -- ``fold_raa``) and Earth-Sun distance (cells are generated
-    at ``REF_DOY``; ``normalise_radiance`` rescales the observed radiance onto it
+    LUT keys on raa, ``fold_raa``) and Earth-Sun distance (cells are generated
+    at ``REF_DOY``, and ``normalise_radiance`` rescales the observed radiance onto it
     before inversion). ``clamp`` behaves as in ``lookup``.
     """
     axes = axes or load_axes()
@@ -790,12 +795,12 @@ def correct_array_from_lut(sun_z, sun_a, view_z, view_a, month, day, aero_profil
                            aot550, cwv_g_cm2, wl_um, L_obs, ozone=DEFAULT_OZONE_ATM_CM,
                            root=SHARD_ROOT_TANAGER, axes=None, clamp=False):
     """``correct_from_lut``, vectorized over many pixels sharing one
-    geometry/aod/band.
+    geometry, aod, and band.
 
-    ``L_obs`` is array-like; every other argument is scalar. ``lookup()``'s
+    ``L_obs`` is array-like, and every other argument is scalar. ``lookup()``'s
     coefficients don't depend on ``L_obs``, so they are computed once here rather
-    than once per pixel. Not a fit when geometry genuinely varies per pixel --
-    there, use ``correct_spectrum_batch_from_lut``. ``clamp`` behaves as in
+    than once per pixel. Not a fit when geometry varies per pixel. For that case
+    use ``correct_spectrum_batch_from_lut``. ``clamp`` behaves as in
     ``lookup``.
     """
     axes = axes or load_axes()
@@ -815,7 +820,7 @@ def correct_spectrum_from_lut(sun_z, sun_a, view_z, view_a, month, day, aero_pro
     """Correct one pixel's multi-band spectrum with vectorized LUT lookup.
 
     ``wl_um`` and ``L_obs`` must be matching one-dimensional arrays. The pixel
-    retains its own geometry and atmospheric inputs; only the independent-band
+    retains its own geometry and atmospheric inputs, and only the independent-band
     coefficient lookup and algebra are vectorized. ``clamp`` behaves as in
     ``lookup``.
     """
@@ -835,10 +840,10 @@ def correct_spectrum_from_lut(sun_z, sun_a, view_z, view_a, month, day, aero_pro
 
 # ------------------------------------------ batch (per-pixel-geometry) lookup
 #
-# ``lookup_spectrum`` / ``correct_spectrum_from_lut`` vectorize over BANDS for
-# one pixel; ``correct_array_from_lut`` vectorizes over PIXELS but only for one
-# shared geometry. This layer covers the remaining case: N pixels each with
-# their OWN geometry/CWV/AOD, full spectrum. Pixels are grouped by their discrete
+# ``lookup_spectrum`` and ``correct_spectrum_from_lut`` vectorize over BANDS for
+# one pixel, while ``correct_array_from_lut`` vectorizes over PIXELS but only for
+# one shared geometry. This layer covers the remaining case: N pixels each with
+# their OWN geometry, CWV, and AOD, full spectrum. Pixels are grouped by their discrete
 # interpolation-bracket signature (which grid cell each axis falls in) and each
 # group runs the same ``_combine_axes`` recursion the scalar path uses, with the
 # per-axis blend weight carried as a per-pixel array.
@@ -892,8 +897,8 @@ def _axis_spec_batch(axes, name, values, sorted_pairs=None, clamp=False):
 def _geometry_specs_batch(root, aero_idx, aerosol, axes, sza, vza, raa, cwv, ozone,
                           clamp=False):
     """Per-pixel ``(name, lo_idx[], hi_idx[], weight[], is_log)`` for each
-    GEOMETRY_AXES entry plus a per-pixel ``out_of_range`` mask -- the array
-    counterpart of ``_geometry_specs``, mirroring its populated-CWV/VZA-levels
+    GEOMETRY_AXES entry plus a per-pixel ``out_of_range`` mask, the array
+    counterpart of ``_geometry_specs``, mirroring its populated CWV and VZA levels
     logic and its one-level-CWV RuntimeWarning. ``clamp`` is threaded to each
     axis's ``_axis_spec_batch``."""
     n = len(sza)
@@ -913,7 +918,7 @@ def _geometry_specs_batch(root, aero_idx, aerosol, axes, sza, vza, raa, cwv, ozo
             warning_key = (root, aero_idx, level)
             if warning_key not in _SINGLE_CWV_WARNING_KEYS:
                 warnings.warn(
-                    f"LUT has only CWV={level_value} populated for aerosol {aerosol!r}; "
+                    f"LUT has only CWV={level_value} populated for aerosol {aerosol!r}, "
                     "holding requested CWV at that level rather than interpolating a "
                     "missing bracket.", RuntimeWarning, stacklevel=3)
                 _SINGLE_CWV_WARNING_KEYS.add(warning_key)
@@ -952,17 +957,18 @@ def _geometry_specs_batch(root, aero_idx, aerosol, axes, sza, vza, raa, cwv, ozo
 def lookup_spectrum_batch(sza, vza, raa, aerosol, cwv, ozone, aod, band_idx,
                           root=SHARD_ROOT_TANAGER, axes=None, clamp=False):
     """``lookup_spectrum`` vectorized over many pixels that each carry their OWN
-    geometry/CWV/AOD.
+    geometry, CWV, and AOD.
 
-    sza/vza/raa/cwv/aod are equal-length 1-D arrays (one value per pixel); ozone
-    and aerosol are scalar; band_idx is the shared 1-D exact-band vector. Returns
+    sza, vza, raa, cwv, and aod are equal-length 1-D arrays, one value per pixel.
+    ozone and aerosol are scalar, and band_idx is the shared 1-D exact-band
+    vector. Returns
     ``({field: (n_pixels, n_bands)}, clamped (n,))`` where ``clamped`` marks
-    pixels whose geometry/AOD was held at a boundary node (``clamp=True``) or
+    pixels whose geometry or AOD was held at a boundary node (``clamp=True``) or
     whose CWV was held at the only populated level.
 
     A permanent per-cell LUT gap (a documented 6S-unsolvable physics corner, not
     a bug) marks *that pixel's* whole row NaN and leaves every other pixel
-    finite; it does not raise. A genuinely missing shard / band / aod-row still
+    finite, and it does not raise. A truly missing shard, band, or aod-row still
     raises, exactly as the scalar path does."""
     axes = axes or load_axes()
     band_idx = np.asarray(band_idx, dtype=int)
@@ -1044,14 +1050,14 @@ def correct_spectrum_batch_from_lut(sun_z, sun_a, view_z, view_a, month, day, ae
                                     ozone=DEFAULT_OZONE_ATM_CM, root=SHARD_ROOT_TANAGER, axes=None,
                                     clamp=False):
     """``correct_spectrum_from_lut`` vectorized over many pixels with per-pixel
-    geometry/CWV/AOD (``lookup_spectrum_batch`` + the reflectance inversion).
+    geometry, CWV, and AOD (``lookup_spectrum_batch`` + the reflectance inversion).
 
-    sun_z/sun_a/view_z/view_a/aot550/cwv_g_cm2 are equal-length 1-D arrays;
-    wl_um is the shared 1-D band-wavelength vector; L_obs is (n_pixels, n_bands);
-    month/day/ozone scalar. Returns ``(reflectance (n, n_bands), gap (n,), clamped
-    (n,))``: ``gap`` marks pixels whose bracket hit a permanent per-cell LUT gap
-    (their reflectance row is all-NaN); ``clamped`` marks pixels whose
-    geometry/AOD was held at a boundary node (``clamp=True``) or whose CWV was
+    sun_z, sun_a, view_z, view_a, aot550, and cwv_g_cm2 are equal-length 1-D arrays.
+    wl_um is the shared 1-D band-wavelength vector, L_obs is (n_pixels, n_bands),
+    and month, day, and ozone are scalar. Returns ``(reflectance (n, n_bands), gap
+    (n,), clamped (n,))``: ``gap`` marks pixels whose bracket hit a permanent
+    per-cell LUT gap (their reflectance row is all-NaN), and ``clamped`` marks
+    pixels whose geometry or AOD was held at a boundary node (``clamp=True``) or whose CWV was
     held at the only populated level."""
     axes = axes or load_axes()
     wl_um = np.asarray(wl_um, dtype=float)

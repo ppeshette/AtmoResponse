@@ -128,7 +128,7 @@ def scene_paths(
     """Expected cached EMIT product paths for one granule id, e.g.
     ``20250221T173656_2505212_021``.
 
-    Returns a dict keyed ``rfl``/``rad``/``obs``/``mask``. The collection version
+    Returns a dict keyed ``rfl``, ``rad``, ``obs``, and ``mask``. The collection version
     is ``001`` for every EMIT product, so the names are deterministic rather than
     globbed.
     """
@@ -169,7 +169,7 @@ def geometry(obs_h5: h5py.File, aoi=None, rows=None, cols=None) -> dict[str, np.
 
     Returns a dict with keys ``sun_z``, ``sun_a``, ``view_z``, ``view_a`` (to-sun
     and to-sensor zenith and azimuth). Each value is a 2-D array over the ``aoi``
-    block, a 1-D array over the ``rows``/``cols`` pixel list, or the full scene
+    block, a 1-D array over the ``rows`` and ``cols`` pixel list, or the full scene
     grid when no selector is given. The keys match ``tanager_ortho.geometry``.
     """
 

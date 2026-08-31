@@ -1,11 +1,11 @@
-"""Public entry point: run any reflectance algorithm's Potential/Realized Sensitivity
+"""Public entry point: run any reflectance algorithm's Potential and Realized Sensitivity
 against a per-sensor atmospheric-response LUT.
 
 The module is layered so Tanager and EMIT share everything but the scene reader
 and the LUT:
 
 - ``_run_from_arrays`` is the sensor-agnostic core. Given already-extracted pixel
-  arrays, a resolved algorithm, and which LUT to use (``lut_root``/``lut_axes``),
+  arrays, a resolved algorithm, and which LUT to use (``lut_root`` and ``lut_axes``),
   it runs the two sensitivity questions and assembles the ``SensitivityResult``.
 - ``evaluate`` is the source-neutral per-pixel evaluation seam: arrays in,
   results plus a clamp mask out, with an injectable ``correct``.
@@ -30,8 +30,8 @@ Two sensitivity questions:
 
 Three distinct roles a boolean array can play, deliberately kept separate:
 
-- ``mask`` is a data-quality gate (cloud/cirrus/nodata, land vs water, a
-  canopy/bare-soil corroboration test). It is never derived from the thing being
+- ``mask`` is a data-quality gate (cloud, cirrus, or nodata screening, land versus water, a
+  canopy or bare-soil corroboration test). It is never derived from the thing being
   tested, so it is safe as a processing restriction.
 - ``aoi`` is the block actually read off disk. It is also a processing
   restriction, but one drawn from domain knowledge (a mapped fire perimeter, a
@@ -54,7 +54,7 @@ entries is not counted the same as a flip that crosses the decision that matters
 ``Algorithm`` to use for both AOD sides and every curve point. Fitting in
 radiance keeps whatever it derives (for example, in-scene endmember spectra)
 independent of the atmosphere error being tested. Exactly one of
-``algorithm``/``fit`` is required.
+``algorithm`` or ``fit`` is required.
 
 AOD is interpolated by default. Read only at the nearest LUT node
 (``node_only=True``) where a documented reason exists. A narrow-differencing
@@ -66,7 +66,7 @@ tabulated grid is **held at the nearest boundary node** (the ``clamp`` option in
 ``lut``). It is never masked out and never left to raise, because a dry scene can
 sit entirely below the LUT's CWV floor and masking would leave too few pixels for
 a Realized Sensitivity map at all. ``SensitivityResult.clamped`` marks which
-pixels this touched, and the raw ``shipped_aod``/``cwv_g_cm2`` arrays are
+pixels this touched, and the raw ``shipped_aod`` and ``cwv_g_cm2`` arrays are
 retained, so a caller can disclose the fraction and its cause rather than have it
 silently absorbed into the delta.
 
@@ -141,7 +141,7 @@ Mask = Callable[["h5py.File", tuple[int, int, int, int]], np.ndarray]
 def _resolve_lut_root(lut, default: str) -> str:
     """A ``lut`` directory (the archive that contains ``shards/``) resolves to its
     shard root. ``None`` keeps the per-sensor module default, which reads the
-    ``LUT_STORE_TANAGER`` / ``LUT_STORE_EMIT`` environment variable."""
+    ``LUT_STORE_TANAGER`` or ``LUT_STORE_EMIT`` environment variable."""
     if lut is None:
         return default
     return str(Path(lut) / "shards")
@@ -228,7 +228,7 @@ def _pool_evaluate_chunk(chunk):
                 cwv_g_cm2=float(cwv_chunk[i]), wl_um=wl_um, L_obs=radiance_chunk[i],
             )
         except ValueError:
-            # A permanent per-cell LUT gap (some aerosol/band/geometry combos are
+            # A permanent per-cell LUT gap (some aerosol, band, and geometry combinations are
             # unsolvable). Record the sentinel instead of failing the population.
             reflectances.append(None)
             continue
@@ -252,7 +252,7 @@ def evaluate(
     shipped-AOD side). It is a pure function of already-extracted arrays with no
     scene I/O, so it is the source-neutral seam that ``run_tanager()`` and
     ``run_emit()`` wrap, and what a test injects a fake ``correct`` into.
-    ``lut_root``/``lut_axes`` select which LUT the default corrector reads
+    ``lut_root`` and ``lut_axes`` select which LUT the default corrector reads
     (Tanager or EMIT). They are ignored when ``correct`` is injected.
 
     Returns ``(results, clamped)``. ``results`` is one algorithm output per pixel
@@ -367,7 +367,7 @@ def _worker_pool(workers, algorithm, correct, use_batch, wl_um, aero_profile, mo
 
 @dataclass(frozen=True)
 class SensitivityResult:
-    """Everything one ``run_tanager``/``run_emit`` call produces: the two answers,
+    """Everything one ``run_tanager`` or ``run_emit`` call produces: the two answers,
     plus enough to replot or re-slice either without recomputing."""
 
     rows: np.ndarray
@@ -390,7 +390,7 @@ class SensitivityResult:
     algorithm_name: str
 
     def value_map(self, values: np.ndarray) -> np.ndarray:
-        """Scatter any per-pixel array aligned with ``rows``/``cols`` back onto
+        """Scatter any per-pixel array aligned with ``rows`` and ``cols`` back onto
         the scene grid."""
         out = np.full(self.shape, np.nan)
         out[self.rows, self.cols] = values
@@ -565,9 +565,9 @@ def _run_from_arrays(
     chunksize: int = 64,
 ) -> SensitivityResult:
     """The sensor-agnostic core: everything after a scene's pixels have been
-    extracted. ``run_tanager``/``run_emit`` do the sensor-specific loading and
+    extracted. ``run_tanager`` and ``run_emit`` do the sensor-specific loading and
     call this with a resolved ``algorithm``, the pixel arrays, and the LUT the
-    scene's sensor was tabulated against (``lut_root``/``lut_axes``).
+    scene's sensor was tabulated against (``lut_root`` and ``lut_axes``).
 
     Runs ``algorithm`` at the shipped and reference AOD (Realized Sensitivity)
     and sweeps a handful of representative pixels across AOD (Potential
@@ -678,11 +678,11 @@ def run_tanager(
     workers: int = 1,
     chunksize: int = 64,
 ) -> SensitivityResult:
-    """Potential/Realized Sensitivity for one Tanager scene: run ``algorithm``
+    """Potential and Realized Sensitivity for one Tanager scene: run ``algorithm``
     (or the algorithm ``fit`` derives) at every ``mask``-passed pixel in
     ``aoi``. See the module docstring for ``mask`` vs. ``scoring_region``,
     ``fit``'s radiance-domain requirement, and ``node_only``. Exactly one of
-    ``algorithm``/``fit`` is required.
+    ``algorithm`` or ``fit`` is required.
 
     ``cache`` is passed to ``tanager_ortho.scene_paths`` (a ``CacheConfig``, a
     path, or ``None`` for the default cache). The scene files must already be
@@ -751,14 +751,14 @@ def run_emit(
     workers: int = 1,
     chunksize: int = 64,
 ) -> SensitivityResult:
-    """Potential/Realized Sensitivity for one EMIT scene against the EMIT LUT: the
+    """Potential and Realized Sensitivity for one EMIT scene against the EMIT LUT: the
     cross-sensor counterpart of ``run_tanager``.
 
     ``lut`` is the EMIT LUT archive directory (the one that contains ``shards/``).
     ``None`` uses the ``LUT_STORE_EMIT`` environment variable.
 
     ``scene_id`` is an EMIT granule id (``20250221T173656_2505212_021``).
-    Reflectance and radiance come from the L2A RFL and L1B RAD products, sun/view
+    Reflectance and radiance come from the L2A RFL and L1B RAD products, sun and view
     geometry from L1B OBS, and the shipped ISOFIT AOD550 and column water vapour
     from the L2A MASK product. ``mask(rfl_h5, aoi)`` returns one boolean per AOI
     pixel. A closure that also needs the OBS or MASK file opens it itself.
