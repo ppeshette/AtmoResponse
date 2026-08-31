@@ -29,6 +29,7 @@ def test_domain_apis_stay_under_modules():
         downloads,
         geo,
         lut,
+        plotting,
         sensitivity,
         surface_classes,
         tanager_catalog,
@@ -52,6 +53,7 @@ def test_domain_apis_stay_under_modules():
     assert callable(sensitivity.run_tanager)
     assert callable(sensitivity.run_emit)
     assert callable(sensitivity.evaluate)
+    assert callable(plotting.sensitivity_figure)
     assert callable(surface_classes.classify_scene_surface)
     assert callable(tanager_catalog.search_scenes)
     assert callable(tanager_data.cache_scene_files)
