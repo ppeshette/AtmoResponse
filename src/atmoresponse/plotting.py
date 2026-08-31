@@ -2,12 +2,10 @@
 Sensitivity results that :mod:`atmoresponse.sensitivity` produces.
 
 Importing this module requires matplotlib (the ``plot`` optional dependency).
-Every consumer of a :class:`~atmoresponse.sensitivity.SensitivityResult` was
-otherwise hand rolling the same two or three panels, and the versions had
-drifted apart in small ways such as which reference AOD lines they drew and what
-colour each reference source got. :data:`REFERENCE_STYLES` is the single fixed
-source to colour mapping, and :func:`sensitivity_figure` is the standard
-three panel layout.
+It gives every :class:`~atmoresponse.sensitivity.SensitivityResult` one shared
+set of panels so that figures stay consistent from one algorithm to the next.
+:data:`REFERENCE_STYLES` fixes the colour and linestyle of each reference AOD
+source, and :func:`sensitivity_figure` is the standard three panel layout.
 """
 import numpy as np
 from matplotlib.colors import ListedColormap, Normalize, SymLogNorm, TwoSlopeNorm

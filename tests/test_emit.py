@@ -59,6 +59,78 @@ def _fake_mask():
     return f
 
 
+# Names copied verbatim from EMIT_L1B_OBS_001_20250221T173656_2505212_021.
+_OBS_BANDS = [
+    b"Path length (sensor-to-ground in meters)",
+    b"To-sensor azimuth (0 to 360 degrees CW from N)",
+    b"To-sensor zenith (0 to 90 degrees from zenith)",
+    b"To-sun azimuth (0 to 360 degrees CW from N)",
+    b"To-sun zenith (0 to 90 degrees from zenith)",
+    b"Solar phase (degrees between to-sensor and to-sun vectors in principal plane)",
+    b"Slope (local surface slope as derived from DEM in degrees)",
+    b"Aspect (local surface aspect 0 to 360 degrees clockwise from N)",
+    b"Cosine(i) (apparent local illumination factor based on DEM slope and aspect and to sun vector)",
+    b"UTC Time (decimal hours for mid-line pixels)",
+    b"Earth-sun distance (AU)",
+]
+
+
+def _fake_obs():
+    f = h5py.File("emit-obs", mode="w", driver="core", backing_store=False)
+    obs = np.zeros((ROWS, COLS, len(_OBS_BANDS)), dtype=float)
+    grid = np.arange(ROWS * COLS).reshape(ROWS, COLS).astype(float)
+    obs[:, :, 1] = grid + 100.0   # to-sensor azimuth
+    obs[:, :, 2] = grid + 10.0    # to-sensor zenith
+    obs[:, :, 3] = grid + 200.0   # to-sun azimuth
+    obs[:, :, 4] = grid + 30.0    # to-sun zenith
+    obs[0, 0, 4] = -9999.0
+    dataset = f.create_dataset("obs", data=obs)
+    dataset.attrs["_FillValue"] = np.array([-9999.0])
+    band_parameters = f.create_group("sensor_band_parameters")
+    band_parameters.create_dataset(
+        "observation_bands", data=np.array(_OBS_BANDS, dtype="S64")
+    )
+    return f
+
+
+def test_geometry_reads_four_angles_by_name():
+    with _fake_obs() as f:
+        geom = emit.geometry(f, aoi=(0, 2, 0, 2))
+
+    assert set(geom) == {"sun_z", "sun_a", "view_z", "view_a"}
+    assert geom["sun_z"].shape == (2, 2)
+    assert np.isnan(geom["sun_z"][0, 0])
+    assert geom["sun_z"][1, 1] == 35.0
+    assert geom["sun_a"][1, 1] == 205.0
+    assert geom["view_z"][1, 1] == 15.0
+    assert geom["view_a"][1, 1] == 105.0
+
+
+def test_geometry_pixel_list_selector():
+    with _fake_obs() as f:
+        geom = emit.geometry(f, rows=[1, 2], cols=[1, 2])
+
+    np.testing.assert_array_equal(geom["view_z"], [15.0, 20.0])
+
+
+def test_scene_paths_names_every_product_deterministically(tmp_path):
+    from atmoresponse.cache import CacheConfig
+
+    sid = "20250221T173656_2505212_021"
+    paths = emit.scene_paths(sid, CacheConfig(tmp_path))
+
+    assert set(paths) == {"rfl", "rad", "obs", "mask"}
+    assert paths["rfl"] == tmp_path / "scenes" / sid / f"EMIT_L2A_RFL_001_{sid}.nc"
+    assert paths["obs"].name == f"EMIT_L1B_OBS_001_{sid}.nc"
+    assert emit.scene_paths(sid, str(tmp_path))["rad"] == paths["rad"]
+
+
+def test_observation_band_index_rejects_ambiguous_prefix():
+    with _fake_obs() as f:
+        with pytest.raises(KeyError, match="not uniquely matched"):
+            emit.observation_band_index(f, "to-sun")
+
+
 def test_wavelength_and_good_wavelength_readers():
     with _fake_rfl() as f:
         np.testing.assert_array_equal(emit.wavelengths_nm(f), WL_NM)

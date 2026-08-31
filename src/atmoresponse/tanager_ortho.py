@@ -78,7 +78,13 @@ def wavelengths_nm(h5: h5py.File, dataset: str = "surface_reflectance") -> np.nd
 
 
 def geometry(l1_h5: h5py.File, aoi=None, rows=None, cols=None) -> dict[str, np.ndarray]:
-    """Read Tanager sun and view geometry arrays."""
+    """Read Tanager sun and view geometry (degrees) from the L1 product.
+
+    Returns a dict with keys ``sun_z``, ``sun_a``, ``view_z``, ``view_a`` (solar
+    and sensor zenith and azimuth). Each value is a 2-D array over the ``aoi``
+    block, a 1-D array over the ``rows``/``cols`` pixel list, or the full scene
+    grid when no selector is given.
+    """
 
     fields = (
         ("sun_z", "sun_zenith"),

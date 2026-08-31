@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Mapping, Sequence
 
 import h5py
@@ -9,6 +10,7 @@ import numpy as np
 
 from .aod import AodSummary, summarize_aod
 from .bands import band_index
+from .cache import CacheConfig
 from .cube import HyperspectralCube
 
 RFL_DATASET = "reflectance"
@@ -17,6 +19,18 @@ WAVELENGTH_DATASET = "sensor_band_parameters/wavelengths"
 GOOD_WAVELENGTH_DATASET = "sensor_band_parameters/good_wavelengths"
 MASK_DATASET = "mask"
 MASK_BANDS_DATASET = "sensor_band_parameters/mask_bands"
+OBS_DATASET = "obs"
+OBS_BANDS_DATASET = "sensor_band_parameters/observation_bands"
+
+# EMIT L1B OBS band-name prefixes for the four angles the LUT lookup needs. The
+# full names carry a parenthetical unit description that has changed across
+# product builds, so match on the leading phrase only.
+_GEOMETRY_BAND_PREFIXES = {
+    "sun_z": "to-sun zenith",
+    "sun_a": "to-sun azimuth",
+    "view_z": "to-sensor zenith",
+    "view_a": "to-sensor azimuth",
+}
 
 
 def _check_selector(aoi, rows, cols) -> None:
@@ -98,6 +112,74 @@ def mask_band(mask_h5: h5py.File, name: str, aoi=None, rows=None, cols=None) -> 
     index = mask_band_index(mask_h5, name)
     values = _slice_2d(mask_h5[MASK_DATASET][:, :, index], aoi=aoi, rows=rows, cols=cols)
     return _replace_fill(values, _fill_value(mask_h5[MASK_DATASET]))
+
+
+_PRODUCT_FILENAMES = {
+    "rfl": "EMIT_L2A_RFL_001_{sid}.nc",
+    "rad": "EMIT_L1B_RAD_001_{sid}.nc",
+    "obs": "EMIT_L1B_OBS_001_{sid}.nc",
+    "mask": "EMIT_L2A_MASK_001_{sid}.nc",
+}
+
+
+def scene_paths(
+    scene_id: str, cache: CacheConfig | Path | str | None = None
+) -> dict[str, Path]:
+    """Expected cached EMIT product paths for one granule id, e.g.
+    ``20250221T173656_2505212_021``.
+
+    Returns a dict keyed ``rfl``/``rad``/``obs``/``mask``. The collection version
+    is ``001`` for every EMIT product, so the names are deterministic rather than
+    globbed.
+    """
+    if isinstance(cache, CacheConfig):
+        root = cache.child("scenes", scene_id)
+    elif cache is None:
+        root = CacheConfig.default().child("scenes", scene_id)
+    else:
+        root = Path(cache) / "scenes" / scene_id
+    return {key: root / name.format(sid=scene_id) for key, name in _PRODUCT_FILENAMES.items()}
+
+
+def observation_band_names(obs_h5: h5py.File) -> tuple[str, ...]:
+    """Read EMIT L1B OBS band names."""
+
+    names = []
+    for value in obs_h5[OBS_BANDS_DATASET][:]:
+        names.append(value.decode() if isinstance(value, bytes) else str(value))
+    return tuple(names)
+
+
+def observation_band_index(obs_h5: h5py.File, prefix: str) -> int:
+    """Return the EMIT OBS band index whose name starts with ``prefix``."""
+
+    normalized = prefix.casefold()
+    matches = [
+        index
+        for index, name in enumerate(observation_band_names(obs_h5))
+        if name.casefold().startswith(normalized)
+    ]
+    if len(matches) != 1:
+        raise KeyError(f"EMIT OBS band not uniquely matched: {prefix}")
+    return matches[0]
+
+
+def geometry(obs_h5: h5py.File, aoi=None, rows=None, cols=None) -> dict[str, np.ndarray]:
+    """Read sun and view geometry (degrees) from the EMIT L1B OBS product.
+
+    Returns a dict with keys ``sun_z``, ``sun_a``, ``view_z``, ``view_a`` (to-sun
+    and to-sensor zenith and azimuth). Each value is a 2-D array over the ``aoi``
+    block, a 1-D array over the ``rows``/``cols`` pixel list, or the full scene
+    grid when no selector is given. The keys match ``tanager_ortho.geometry``.
+    """
+
+    fill_value = _fill_value(obs_h5[OBS_DATASET])
+    result = {}
+    for key, prefix in _GEOMETRY_BAND_PREFIXES.items():
+        index = observation_band_index(obs_h5, prefix)
+        values = _slice_2d(obs_h5[OBS_DATASET][:, :, index], aoi=aoi, rows=rows, cols=cols)
+        result[key] = _replace_fill(values, fill_value)
+    return result
 
 
 def surface_reflectance_at(
