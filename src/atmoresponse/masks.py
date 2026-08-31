@@ -10,7 +10,7 @@ import numpy as np
 
 from . import lut, tanager_ortho
 from .cache import CacheConfig
-from .recipes import water
+from .recipes import agriculture, water
 
 
 def _as_bool_mask(mask, *, name: str = "mask") -> np.ndarray:
@@ -144,6 +144,32 @@ def tanager_water(
     return erode(selected, pixels=erode_pixels)
 
 
+def tanager_vegetation(
+    sr_h5: h5py.File,
+    *,
+    aoi=None,
+    savi_threshold: float = 0.25,
+    screen_clear: bool = True,
+) -> np.ndarray:
+    """Canopy-presence candidates, optionally screened by Tanager quality masks.
+
+    Wraps :func:`atmoresponse.recipes.agriculture.canopy_present`: a
+    corroboration screen for where a canopy reflectance algorithm is meaningful,
+    not a land-cover product.
+    """
+
+    aoi = _default_aoi(sr_h5, aoi, None, None)
+    wavelengths, reflectance = tanager_ortho.reflectance_at(
+        sr_h5,
+        [agriculture.CANOPY_RED_NM, *agriculture.CANOPY_RED_EDGE_NM, agriculture.CANOPY_NIR_NM],
+        aoi=aoi,
+    )
+    selected = agriculture.canopy_present(reflectance, wavelengths, savi_threshold=savi_threshold)
+    if screen_clear:
+        selected = combine_all(selected, tanager_clear(sr_h5, aoi=aoi))
+    return selected
+
+
 def tanager_land(
     sr_h5: h5py.File,
     *,
@@ -181,3 +207,32 @@ def tanager_admissible(
         aod_in_lut(sr_h5, aoi=aoi, axes=axes, sensor=sensor),
         finite_tanager_inputs(scene_id, aoi, band_targets_nm, cache=cache),
     )
+
+
+def admissible(
+    scene_id: str,
+    band_targets_nm: Sequence[float],
+    domain: Callable[..., np.ndarray] | None = None,
+    *,
+    cache: CacheConfig | Path | str | None = None,
+) -> Callable[[h5py.File, tuple[int, int, int, int]], np.ndarray]:
+    """Build the ``mask`` argument for ``run_tanager`` in one call.
+
+    ``domain`` is an analysis-target selector such as :func:`tanager_water` or
+    :func:`tanager_vegetation` (or any ``(sr_h5, *, aoi) -> bool array``). The
+    returned mask intersects it with the Tanager cloud, cirrus, and nodata
+    screen, the LUT AOD-coverage check, and the finite-radiance check, so a
+    section only has to name its target.
+    """
+
+    def mask(sr_h5: h5py.File, aoi: tuple[int, int, int, int]) -> np.ndarray:
+        return tanager_admissible(
+            sr_h5,
+            aoi=aoi,
+            scene_id=scene_id,
+            band_targets_nm=band_targets_nm,
+            cache=cache,
+            selector=None if domain is None else (lambda h5, window: domain(h5, aoi=window)),
+        )
+
+    return mask

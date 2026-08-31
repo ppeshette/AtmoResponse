@@ -57,6 +57,8 @@ def test_domain_apis_stay_under_modules():
     assert callable(lut.reflectance_from_radiance)
     assert callable(masks.combine_all)
     assert callable(masks.tanager_water)
+    assert callable(masks.tanager_vegetation)
+    assert callable(masks.admissible)
     assert callable(aod.resolve_aod)
     assert callable(sensitivity.run_tanager)
     assert callable(sensitivity.run_emit)
