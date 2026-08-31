@@ -163,6 +163,21 @@ def test_prepared_sam_classifier_evaluate_many_uses_grouped_labels():
     assert scores[0].value < scores[1].value
 
 
+def test_prepared_sam_classifier_accepts_the_engine_mapping_form():
+    prepared = prepare_sam_classifier(
+        [500.0, 600.0],
+        [500.0, 600.0],
+        [[1.0, 0.0], [0.0, 1.0]],
+        labels=["a", "b"],
+        target_index=0,
+    )
+    assert prepared({500.0: 0.95, 600.0: 0.05}) == prepared([0.95, 0.05])
+
+    batched = prepared.evaluate_many([{500.0: 0.95, 600.0: 0.05},
+                                      {500.0: 0.05, 600.0: 0.95}])
+    assert [score.label for score in batched] == ["a", "b"]
+
+
 def test_prepared_sam_classifier_respects_mask_and_fill_values():
     prepared = prepare_sam_classifier(
         [500.0, 600.0],

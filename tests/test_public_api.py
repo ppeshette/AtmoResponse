@@ -57,8 +57,13 @@ def test_domain_apis_stay_under_modules():
     assert callable(surface_classes.classify_scene_surface)
     assert callable(tanager_catalog.search_scenes)
     assert callable(tanager_data.cache_scene_files)
+    assert callable(tanager_data.fetch_scene)
     assert callable(tanager_ortho.radiance_at)
     assert callable(tanager_ortho.shipped_aod_summary)
+
+    from atmoresponse import recipes
+
+    assert callable(recipes.as_algorithm)
 
 
 def test_low_level_helpers_are_not_root_exports():

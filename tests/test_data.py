@@ -1,5 +1,7 @@
 import datetime as dt
 
+import pytest
+
 from atmoresponse.cache import CacheConfig
 from atmoresponse.downloads import download_file
 from atmoresponse.catalog import SceneAssets, SceneRecord
@@ -163,3 +165,28 @@ def test_local_scene_files_wraps_existing_paths_without_download(tmp_path):
     assert files.surface_reflectance == sr
     assert files.surface_reflectance.read_bytes() == b"sr"
     assert files.auxiliary == {"emit": emit}
+
+
+def test_fetch_scene_resolves_id_from_supplied_records(tmp_path):
+    url_sr = "https://example.test/x-sr.h5"
+    url_rad = "https://example.test/x-rad.h5"
+    session = FakeDownloadSession({url_sr: b"sr", url_rad: b"rad"})
+    record = SceneRecord(
+        scene_id="scene-a",
+        acquired=dt.datetime(2025, 1, 1),
+        bbox=(-119.0, 34.0, -118.0, 35.0),
+        source="tanager",
+        assets={"ortho_sr_hdf5": url_sr, "ortho_radiance_hdf5": url_rad},
+    )
+
+    files = tanager_data.fetch_scene(
+        "scene-a", cache=CacheConfig(tmp_path), records=[record], session=session)
+
+    assert files.surface_reflectance == tmp_path / "scenes" / "scene-a" / "scene-a_ortho_sr.h5"
+    assert files.surface_reflectance.read_bytes() == b"sr"
+    assert files.radiance.read_bytes() == b"rad"
+
+
+def test_fetch_scene_unknown_id_raises_keyerror(tmp_path):
+    with pytest.raises(KeyError, match="not found in the Tanager catalog"):
+        tanager_data.fetch_scene("missing", cache=CacheConfig(tmp_path), records=[])

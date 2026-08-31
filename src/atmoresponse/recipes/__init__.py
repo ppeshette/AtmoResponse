@@ -1,12 +1,14 @@
 """Published algorithm examples used by AtmoResponse."""
 
 from . import sam, wildfire_sam
+from .adapters import as_algorithm
 from .agriculture import canopy_chlorophyll_rsi, vegetation_water_indices
 from .cyanobacteria import cyanobacteria_index
 from .mineral import aloh_2200_depth
 
 __all__ = [
     "aloh_2200_depth",
+    "as_algorithm",
     "canopy_chlorophyll_rsi",
     "cyanobacteria_index",
     "sam",

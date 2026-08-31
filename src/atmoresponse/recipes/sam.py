@@ -2,12 +2,25 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 import numpy as np
 
 from atmoresponse.sensitivity import LabeledScore
+
+
+def _band_last_array(values) -> np.ndarray:
+    """Accept the sensitivity engine's per-pixel mapping form as well as a plain
+    array. One ``{wavelength_nm: reflectance}`` mapping becomes a 1-D band vector
+    ordered by wavelength, a sequence of such mappings becomes 2-D, and anything
+    already array-like passes straight through."""
+    if isinstance(values, Mapping):
+        return np.array([values[key] for key in sorted(values)], dtype="f8")
+    if isinstance(values, Sequence) and values and isinstance(values[0], Mapping):
+        keys = sorted(values[0])
+        return np.array([[row[key] for key in keys] for row in values], dtype="f8")
+    return np.asarray(values, dtype="f8")
 
 
 @dataclass(frozen=True)
@@ -37,7 +50,7 @@ class PreparedSamClassifier:
         return self.wavelengths_nm[self.band_mask]
 
     def _values(self, values, mask=None) -> np.ndarray:
-        array = np.asarray(values, dtype="f8")
+        array = _band_last_array(values)
         if array.ndim < 1 or array.shape[-1] != self.band_mask.size:
             raise ValueError("values must be band-last and match the prepared wavelengths")
         prepared = array[..., self.band_mask].copy()
