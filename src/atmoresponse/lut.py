@@ -41,10 +41,14 @@ from importlib.resources import files
 
 import numpy as np
 
-# Shards relocate together via LUT_STORE. The public package does not ship the
-# shard store itself; point this at a downloaded LUT archive.
-LUT_STORE = os.environ.get("LUT_STORE", "lut_store")
-SHARD_ROOT = os.path.join(LUT_STORE, "shards")
+# The LUT is a per-sensor archive, downloaded separately and never shipped with
+# the package. Point LUT_STORE_TANAGER / LUT_STORE_EMIT at the unpacked archive
+# for each sensor, or pass a directory as ``lut=`` to run_tanager / run_emit.
+LUT_STORE_TANAGER = os.environ.get("LUT_STORE_TANAGER", "lut_store_tanager")
+SHARD_ROOT_TANAGER = os.path.join(LUT_STORE_TANAGER, "shards")
+
+LUT_STORE_EMIT = os.environ.get("LUT_STORE_EMIT", "lut_store_emit")
+SHARD_ROOT_EMIT = os.path.join(LUT_STORE_EMIT, "shards")
 
 # Axes that key a shard (what generation parallelises over) vs. axes swept inside
 # one shard. Adding a key axis writes new shards and rewrites nothing.
@@ -214,7 +218,7 @@ def read_shard(path):
     return out
 
 
-def scan_shards(root=SHARD_ROOT):
+def scan_shards(root=SHARD_ROOT_TANAGER):
     """key tuple -> (shard_id, path), read from the shards themselves.
 
     This is the record; any manifest is only an index over it.
@@ -655,7 +659,7 @@ def _axis_spec(axes, name, value, sorted_pairs=None, clamp=False):
     return lo_i, hi_i, w, _AXIS_LOG[name]
 
 
-def lookup(sza, vza, raa, aerosol, cwv, ozone, aod, band_idx, root=SHARD_ROOT, axes=None,
+def lookup(sza, vza, raa, aerosol, cwv, ozone, aod, band_idx, root=SHARD_ROOT_TANAGER, axes=None,
            clamp=False):
     """Interpolated {xa, xb, xc, path, trans, sphalb} at an arbitrary point
     inside the LUT's tabulated grid.
@@ -695,7 +699,7 @@ def lookup(sza, vza, raa, aerosol, cwv, ozone, aod, band_idx, root=SHARD_ROOT, a
 
 
 def lookup_spectrum(sza, vza, raa, aerosol, cwv, ozone, aod, band_idx,
-                    root=SHARD_ROOT, axes=None, clamp=False):
+                    root=SHARD_ROOT_TANAGER, axes=None, clamp=False):
     """Interpolated coefficients for multiple exact band indices.
 
     Geometry and atmosphere remain scalar: this accelerates one pixel's full
@@ -763,7 +767,7 @@ def fold_raa_array(view_a, sun_a):
 
 def correct_from_lut(sun_z, sun_a, view_z, view_a, month, day, aero_profile,
                      aot550, cwv_g_cm2, wl_um, L_obs, ozone=DEFAULT_OZONE_ATM_CM,
-                     root=SHARD_ROOT, axes=None, clamp=False):
+                     root=SHARD_ROOT_TANAGER, axes=None, clamp=False):
     """LUT-backed radiance -> surface reflectance for one band, one pixel.
 
     ``aero_profile`` is a LUT axis-value string (e.g. "Maritime"). Two things a
@@ -784,7 +788,7 @@ def correct_from_lut(sun_z, sun_a, view_z, view_a, month, day, aero_profile,
 
 def correct_array_from_lut(sun_z, sun_a, view_z, view_a, month, day, aero_profile,
                            aot550, cwv_g_cm2, wl_um, L_obs, ozone=DEFAULT_OZONE_ATM_CM,
-                           root=SHARD_ROOT, axes=None, clamp=False):
+                           root=SHARD_ROOT_TANAGER, axes=None, clamp=False):
     """``correct_from_lut``, vectorized over many pixels sharing one
     geometry/aod/band.
 
@@ -806,7 +810,7 @@ def correct_array_from_lut(sun_z, sun_a, view_z, view_a, month, day, aero_profil
 
 def correct_spectrum_from_lut(sun_z, sun_a, view_z, view_a, month, day, aero_profile,
                               aot550, cwv_g_cm2, wl_um, L_obs,
-                              ozone=DEFAULT_OZONE_ATM_CM, root=SHARD_ROOT, axes=None,
+                              ozone=DEFAULT_OZONE_ATM_CM, root=SHARD_ROOT_TANAGER, axes=None,
                               clamp=False):
     """Correct one pixel's multi-band spectrum with vectorized LUT lookup.
 
@@ -946,7 +950,7 @@ def _geometry_specs_batch(root, aero_idx, aerosol, axes, sza, vza, raa, cwv, ozo
 
 
 def lookup_spectrum_batch(sza, vza, raa, aerosol, cwv, ozone, aod, band_idx,
-                          root=SHARD_ROOT, axes=None, clamp=False):
+                          root=SHARD_ROOT_TANAGER, axes=None, clamp=False):
     """``lookup_spectrum`` vectorized over many pixels that each carry their OWN
     geometry/CWV/AOD.
 
@@ -1037,7 +1041,7 @@ def lookup_spectrum_batch(sza, vza, raa, aerosol, cwv, ozone, aod, band_idx,
 
 def correct_spectrum_batch_from_lut(sun_z, sun_a, view_z, view_a, month, day, aero_profile,
                                     aot550, cwv_g_cm2, wl_um, L_obs,
-                                    ozone=DEFAULT_OZONE_ATM_CM, root=SHARD_ROOT, axes=None,
+                                    ozone=DEFAULT_OZONE_ATM_CM, root=SHARD_ROOT_TANAGER, axes=None,
                                     clamp=False):
     """``correct_spectrum_from_lut`` vectorized over many pixels with per-pixel
     geometry/CWV/AOD (``lookup_spectrum_batch`` + the reflectance inversion).

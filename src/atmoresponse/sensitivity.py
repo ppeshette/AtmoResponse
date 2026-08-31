@@ -96,15 +96,18 @@ import datetime
 import multiprocessing as mp
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
+from pathlib import Path
 
 import h5py
 import numpy as np
 
+from atmoresponse import emit as emit_reader
 from atmoresponse import tanager_ortho as extract
 from atmoresponse.aod import expected_error
 from atmoresponse.lut import (
     DEFAULT_OZONE_ATM_CM,
-    SHARD_ROOT,
+    SHARD_ROOT_EMIT,
+    SHARD_ROOT_TANAGER,
     correct_spectrum_batch_from_lut,
     correct_spectrum_from_lut,
     fold_raa_array,
@@ -133,6 +136,15 @@ class LabeledScore:
 Algorithm = Callable[[Reflectance], "float | LabeledScore"]
 Fit = Callable[[np.ndarray, np.ndarray], Algorithm]
 Mask = Callable[["h5py.File", tuple[int, int, int, int]], np.ndarray]
+
+
+def _resolve_lut_root(lut, default: str) -> str:
+    """A ``lut`` directory (the archive that contains ``shards/``) resolves to its
+    shard root. ``None`` keeps the per-sensor module default, which reads the
+    ``LUT_STORE_TANAGER`` / ``LUT_STORE_EMIT`` environment variable."""
+    if lut is None:
+        return default
+    return str(Path(lut) / "shards")
 
 
 def _unpack(result) -> tuple[float, str | None]:
@@ -230,7 +242,7 @@ def evaluate(
     geometry: Mapping[str, np.ndarray], aero_profile: str, aod550,
     month: int, day: int, cwv_g_cm2: np.ndarray,
     *, correct: Callable[..., np.ndarray] | None = None, clamp: bool = True,
-    lut_root: str = SHARD_ROOT, lut_axes: Mapping | None = None,
+    lut_root: str = SHARD_ROOT_TANAGER, lut_axes: Mapping | None = None,
     workers: int = 1, chunksize: int = 64, pool: "mp.pool.Pool | None" = None,
 ) -> tuple[list, np.ndarray]:
     """Evaluate ``algorithm`` at every pixel in ``radiance`` (n_pixels, n_bands).
@@ -316,7 +328,7 @@ def evaluate(
     return results, clamped
 
 
-def _preload_for_pool(aero_profile, geometry, cwv_g_cm2, lut_root=SHARD_ROOT, lut_axes=None):
+def _preload_for_pool(aero_profile, geometry, cwv_g_cm2, lut_root=SHARD_ROOT_TANAGER, lut_axes=None):
     """Every LUT shard this pixel population's real geometry could touch, read
     once in the calling (main) process ahead of handing work to a ``Pool``. A
     fresh worker's empty cache is the parallelism bottleneck. Assumes the default
@@ -341,7 +353,7 @@ def _preload_for_pool(aero_profile, geometry, cwv_g_cm2, lut_root=SHARD_ROOT, lu
 
 
 def _worker_pool(workers, algorithm, correct, use_batch, wl_um, aero_profile, month, day,
-                 clamp, lut_root=SHARD_ROOT, lut_axes=None, preload=None):
+                 clamp, lut_root=SHARD_ROOT_TANAGER, lut_axes=None, preload=None):
     """One ``Pool``, reused across the shipped-AOD and reference-AOD
     ``evaluate()`` calls. A no-op context manager when ``workers <= 1``.
     ``preload`` is installed into every worker's cache at startup via
@@ -546,7 +558,7 @@ def _run_from_arrays(
     extra_curve_aod: Sequence[float] = (),
     unit: str = "",
     algorithm_name: str = "",
-    lut_root: str = SHARD_ROOT,
+    lut_root: str = SHARD_ROOT_TANAGER,
     lut_axes: Mapping | None = None,
     correct: Callable[..., np.ndarray] | None = None,
     workers: int = 1,
@@ -661,6 +673,7 @@ def run_tanager(
     unit: str = "",
     algorithm_name: str = "",
     cache=None,
+    lut=None,
     correct: Callable[..., np.ndarray] | None = None,
     workers: int = 1,
     chunksize: int = 64,
@@ -672,7 +685,11 @@ def run_tanager(
     ``algorithm``/``fit`` is required.
 
     ``cache`` is passed to ``tanager_ortho.scene_paths`` (a ``CacheConfig``, a
-    path, or ``None`` for the default cache).
+    path, or ``None`` for the default cache). The scene files must already be
+    local.
+
+    ``lut`` is the Tanager LUT archive directory (the one that contains
+    ``shards/``). ``None`` uses the ``LUT_STORE_TANAGER`` environment variable.
     """
     if (algorithm is None) == (fit is None):
         raise ValueError("pass exactly one of `algorithm` or `fit`")
@@ -702,17 +719,96 @@ def run_tanager(
         reference_aod, acquisition, scene_shape, rows, cols,
         group_labels=group_labels, node_only=node_only, percentiles=percentiles,
         n_curve_samples=n_curve_samples, extra_curve_aod=extra_curve_aod, unit=unit,
-        algorithm_name=algorithm_name, correct=correct, workers=workers, chunksize=chunksize,
+        algorithm_name=algorithm_name, lut_root=_resolve_lut_root(lut, SHARD_ROOT_TANAGER),
+        correct=correct, workers=workers, chunksize=chunksize,
     )
 
 
-def run_emit(*args, **kwargs) -> SensitivityResult:
-    """Potential/Realized Sensitivity for one EMIT scene against the EMIT LUT.
-    The cross-sensor counterpart of ``run_tanager``.
+EmitMask = Callable[["h5py.File", tuple[int, int, int, int]], np.ndarray]
 
-    Not available yet: it needs an ``emit.geometry()`` reader for the L1B OBS
-    product and the bundled EMIT LUT (``axes_emit.json`` plus its shard store).
+
+def run_emit(
+    scene_id: str,
+    aoi: tuple[int, int, int, int],
+    mask: EmitMask,
+    band_targets_nm: Sequence[float],
+    reference_aod: float,
+    aero_profile: str,
+    *,
+    algorithm: Algorithm | None = None,
+    fit: Fit | None = None,
+    group_labels: Mapping[str, str] | None = None,
+    node_only: bool = False,
+    percentiles: Sequence[int] = (5, 20, 50, 80, 95),
+    n_curve_samples: int = 17,
+    extra_curve_aod: Sequence[float] = (),
+    unit: str = "",
+    algorithm_name: str = "",
+    cache=None,
+    lut=None,
+    paths: Mapping[str, str] | None = None,
+    correct: Callable[..., np.ndarray] | None = None,
+    workers: int = 1,
+    chunksize: int = 64,
+) -> SensitivityResult:
+    """Potential/Realized Sensitivity for one EMIT scene against the EMIT LUT: the
+    cross-sensor counterpart of ``run_tanager``.
+
+    ``lut`` is the EMIT LUT archive directory (the one that contains ``shards/``).
+    ``None`` uses the ``LUT_STORE_EMIT`` environment variable.
+
+    ``scene_id`` is an EMIT granule id (``20250221T173656_2505212_021``).
+    Reflectance and radiance come from the L2A RFL and L1B RAD products, sun/view
+    geometry from L1B OBS, and the shipped ISOFIT AOD550 and column water vapour
+    from the L2A MASK product. ``mask(rfl_h5, aoi)`` returns one boolean per AOI
+    pixel. A closure that also needs the OBS or MASK file opens it itself.
+
+    ``paths`` overrides file resolution with an explicit
+    ``{"rfl","rad","obs","mask"}`` mapping, for a caller whose EMIT files are
+    already local and not laid out under ``cache``.
+
+    See ``run_tanager`` and the module docstring for ``mask`` vs.
+    ``scoring_region``, ``fit``'s radiance-domain requirement, and ``node_only``.
     """
-    raise NotImplementedError(
-        "run_emit is not available yet: it needs emit.geometry() (L1B OBS product) "
-        "and the bundled EMIT LUT axes and shard store.")
+    if (algorithm is None) == (fit is None):
+        raise ValueError("pass exactly one of `algorithm` or `fit`")
+
+    resolved = dict(emit_reader.scene_paths(scene_id, cache))
+    if paths is not None:
+        resolved.update(paths)
+
+    with h5py.File(resolved["rfl"], "r") as rfl, \
+         h5py.File(resolved["rad"], "r") as rad, \
+         h5py.File(resolved["obs"], "r") as obs, \
+         h5py.File(resolved["mask"], "r") as mask_h5:
+        r0, r1, c0, c1 = aoi
+        scene_shape = rfl[emit_reader.RFL_DATASET].shape[:2]
+        if not (0 <= r0 < r1 <= scene_shape[0] and 0 <= c0 < c1 <= scene_shape[1]):
+            raise ValueError(f"aoi {aoi} outside scene extent {scene_shape}")
+
+        valid = mask(rfl, aoi)
+        rows, cols = _select_and_mask(valid, aoi)
+
+        wl_nm, radiance_block = emit_reader.radiance_at(rad, band_targets_nm, aoi=aoi)
+        geometry_block = emit_reader.geometry(obs, aoi=aoi)
+        shipped_aod_block = emit_reader.aod550(mask_h5, aoi=aoi)
+        cwv_block = emit_reader.h2o(mask_h5, aoi=aoi)
+
+    radiance = radiance_block[valid]
+    geometry = {name: values[valid] for name, values in geometry_block.items()}
+    shipped_aod = shipped_aod_block[valid]
+    cwv_g_cm2 = cwv_block[valid]
+
+    acquisition = datetime.datetime.strptime(scene_id[:15], "%Y%m%dT%H%M%S")
+    if fit is not None:
+        algorithm = fit(wl_nm, radiance)
+
+    return _run_from_arrays(
+        algorithm, wl_nm, radiance, geometry, shipped_aod, cwv_g_cm2, aero_profile,
+        reference_aod, acquisition, scene_shape, rows, cols,
+        group_labels=group_labels, node_only=node_only, percentiles=percentiles,
+        n_curve_samples=n_curve_samples, extra_curve_aod=extra_curve_aod, unit=unit,
+        algorithm_name=algorithm_name, lut_root=_resolve_lut_root(lut, SHARD_ROOT_EMIT),
+        lut_axes=load_axes(sensor="emit"), correct=correct, workers=workers,
+        chunksize=chunksize,
+    )

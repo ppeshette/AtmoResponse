@@ -9,7 +9,7 @@ import h5py
 import numpy as np
 import pytest
 
-from atmoresponse import sensitivity
+from atmoresponse import emit, sensitivity
 from atmoresponse.sensitivity import (
     LabeledScore,
     reconstruction_gap,
@@ -201,9 +201,117 @@ def test_variance_fraction_additivity_guard():
     assert np.isfinite(vf_bad.coverage)
 
 
-def test_run_emit_not_wired_yet():
-    with pytest.raises(NotImplementedError, match="emit.geometry"):
-        run_emit("EMIT_scene", (0, 1, 0, 1), _full_mask, [700.0], 0.1, "Maritime")
+_OBS_BANDS = [
+    b"Path length", b"To-sensor azimuth", b"To-sensor zenith",
+    b"To-sun azimuth", b"To-sun zenith", b"Solar phase", b"Slope",
+    b"Aspect", b"Cosine(i)", b"UTC Time", b"Earth-sun distance",
+]
+
+
+def _write_synthetic_emit_scene(tmp_path, scene_id, shipped_aod, cwv, radiance_by_pixel):
+    """Minimal 1xN EMIT product set with exactly the datasets ``run_emit`` reads.
+
+    ``radiance_by_pixel`` is (N, 2): N pixels, 2 bands at 700/800 nm.
+    """
+    n = len(shipped_aod)
+    scene_dir = tmp_path / "scenes" / scene_id
+    scene_dir.mkdir(parents=True, exist_ok=True)
+    wl = np.array([700.0, 800.0])
+    paths = {key: scene_dir / name.format(sid=scene_id)
+             for key, name in emit._PRODUCT_FILENAMES.items()}
+
+    with h5py.File(paths["rfl"], "w") as rfl:
+        rfl.create_dataset("reflectance", data=np.zeros((1, n, 2)))
+        rfl.create_group("sensor_band_parameters").create_dataset("wavelengths", data=wl)
+    with h5py.File(paths["rad"], "w") as rad:
+        rad.create_dataset("radiance", data=np.asarray(radiance_by_pixel).reshape(1, n, 2))
+        rad.create_group("sensor_band_parameters").create_dataset("wavelengths", data=wl)
+    with h5py.File(paths["obs"], "w") as obs:
+        cube = np.zeros((1, n, len(_OBS_BANDS)))
+        obs.create_dataset("obs", data=cube)
+        obs.create_group("sensor_band_parameters").create_dataset(
+            "observation_bands", data=np.array(_OBS_BANDS, dtype="S32"))
+    with h5py.File(paths["mask"], "w") as mask_h5:
+        bands = np.zeros((1, n, 2))
+        bands[0, :, 0] = shipped_aod
+        bands[0, :, 1] = cwv
+        mask_h5.create_dataset("mask", data=bands)
+        mask_h5.create_group("sensor_band_parameters").create_dataset(
+            "mask_bands", data=np.array([b"AOD550", b"H2O (g cm-2)"], dtype="S32"))
+
+
+def _emit_mask(rfl, aoi):
+    return np.ones((aoi[1] - aoi[0], aoi[3] - aoi[2]), dtype=bool)
+
+
+def test_run_emit_realized_sensitivity_with_injected_correct(tmp_path):
+    scene_id = "20250101T000000_2500101_001"
+    shipped_aod = np.array([0.10, 0.30, 0.50])
+    radiance = np.ones((3, 2))
+    _write_synthetic_emit_scene(tmp_path, scene_id, shipped_aod, np.ones(3), radiance)
+
+    result = run_emit(scene_id, (0, 1, 0, 3), _emit_mask, [700.0, 800.0], 0.20, "Maritime",
+                      algorithm=_sum_algorithm, cache=tmp_path, correct=_fake_correct)
+
+    # _fake_correct subtracts AOD from each band; _sum_algorithm sums two bands,
+    # so delta = at_shipped - at_reference = -2 * (shipped_aod - 0.20).
+    np.testing.assert_allclose(result.delta, -2.0 * (shipped_aod - 0.20))
+    assert result.shape == (1, 3)
+    assert not result.clamped.any()
+    assert result.reference_aod == 0.20
+
+
+def test_run_emit_reads_obs_geometry(tmp_path, monkeypatch):
+    scene_id = "20250101T000000_2500101_002"
+    _write_synthetic_emit_scene(tmp_path, scene_id, np.array([0.2]), np.ones(1), np.ones((1, 2)))
+
+    seen = {}
+
+    def spy_correct(*, sun_z, view_z, aot550, L_obs, **_):
+        seen["sun_z"], seen["view_z"] = sun_z, view_z
+        return np.asarray(L_obs, dtype=float) - aot550
+
+    # non-zero geometry in the OBS cube: To-sun zenith band 4, To-sensor zenith band 2
+    with h5py.File(emit.scene_paths(scene_id, tmp_path)["obs"], "r+") as obs:
+        obs["obs"][0, 0, 4] = 33.0
+        obs["obs"][0, 0, 2] = 4.0
+
+    run_emit(scene_id, (0, 1, 0, 1), _emit_mask, [700.0, 800.0], 0.2, "Maritime",
+             algorithm=_sum_algorithm, cache=tmp_path, correct=spy_correct)
+    assert seen["sun_z"] == 33.0
+    assert seen["view_z"] == 4.0
+
+
+def test_run_emit_rejects_both_algorithm_and_fit(tmp_path):
+    scene_id = "20250101T000000_2500101_003"
+    _write_synthetic_emit_scene(tmp_path, scene_id, np.array([0.2]), np.ones(1), np.ones((1, 2)))
+    with pytest.raises(ValueError, match="exactly one"):
+        run_emit(scene_id, (0, 1, 0, 1), _emit_mask, [700.0], 0.2, "Maritime", cache=tmp_path,
+                 correct=_fake_correct)
+
+
+def test_resolve_lut_root_maps_a_directory_to_its_shard_root():
+    assert sensitivity._resolve_lut_root(None, "DEFAULT") == "DEFAULT"
+    resolved = sensitivity._resolve_lut_root("/tmp/lut_archive", "DEFAULT")
+    assert resolved.replace("\\", "/").endswith("lut_archive/shards")
+
+
+def test_run_tanager_threads_the_lut_directory(tmp_path, monkeypatch):
+    scene_id = "20250101_000000_00_0000"
+    _write_synthetic_scene(tmp_path, scene_id, np.array([0.2]), np.ones(1), np.ones((1, 2)))
+
+    seen = {}
+    real = sensitivity._run_from_arrays
+
+    def spy(*args, **kwargs):
+        seen["lut_root"] = kwargs.get("lut_root")
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(sensitivity, "_run_from_arrays", spy)
+    run_tanager(scene_id, (0, 1, 0, 1), _full_mask, [700.0, 800.0], 0.2, "Continental",
+                algorithm=_sum_algorithm, cache=tmp_path, correct=_fake_correct,
+                lut=tmp_path / "my_lut")
+    assert seen["lut_root"].replace("\\", "/").endswith("my_lut/shards")
 
 
 def test_reconstruction_gap_magnitudes():

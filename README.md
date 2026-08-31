@@ -80,13 +80,32 @@ location. If the variable is unset, the package uses a platform cache directory 
 user profile. Scene asset downloads are written to temporary files first, then moved into the cache
 when complete.
 
+## Look-up table
+
+Potential and Realized Sensitivity are computed against a precomputed look-up table of
+atmospheric-correction coefficients, one table per sensor. Each table holds the 6S
+radiative-transfer coefficients for a fixed grid of solar and view geometry, column water vapour,
+ozone, aerosol model, aerosol optical depth, and sensor band. A reflectance retrieval at an assumed
+AOD is then a table lookup plus a short algebra step rather than a live radiative-transfer call,
+which is what makes a full-scene comparison at two AOD values tractable.
+
+The package ships only the axis definitions, `src/atmoresponse/assets/lut/axes_tanager.json` and
+`axes_emit.json`. The coefficient store is large and is distributed separately as a per-sensor
+archive. Point `LUT_STORE_TANAGER` or `LUT_STORE_EMIT` at the unpacked archive, or pass its
+directory to `run_tanager` or `run_emit` as `lut=`. The archive location is given with the release.
+
+The pipeline that generated the tables (the 6S forward-model driver and the shard store layout) is
+not part of this release. It may be published separately at a later date. The method itself is
+described in the report.
+
 ## Current Scaffold
 
 This scaffold defines the public import boundary while the full implementation is assembled.
 Shared scene models, a neutral hyperspectral cube, cache-backed downloads, source-neutral scene
 asset caching, explicit Tanager and EMIT catalog access, source-neutral surface classification,
 Tanager and EMIT adapters, shipped-AOD summaries, AOD reference-selection infrastructure, an AERONET
-AOD provider, LUT coefficient algebra, fixed-library SAM primitives, the bundled wildfire SAM
-library, and the RSI/WI, Wynne CI, and AlOH example algorithms are implemented.
-GOES/VIIRS/MERRA-2 aerosol providers, LUT storage, and full sensitivity evaluation are named but not
-yet implemented.
+AOD provider, the LUT consumer layer, per-sensor sensitivity runners (`run_tanager`, `run_emit`),
+the figure primitives, fixed-library SAM primitives, the bundled wildfire SAM library, and the
+RSI/WI, Wynne CI, and AlOH example algorithms are implemented.
+The GOES, VIIRS, and MERRA-2 aerosol providers and the LUT archive download helper are named but
+not yet implemented.

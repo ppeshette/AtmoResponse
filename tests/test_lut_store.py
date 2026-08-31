@@ -1,7 +1,7 @@
 """Offline tests for the LUT consumer layer.
 
 These build a tiny synthetic shard store with hand-computable answers rather than
-the real downloadable LUT archive, so they need no network and no ``LUT_STORE``.
+the real downloadable LUT archive, so they need no network and no ``LUT_STORE_TANAGER``.
 """
 from __future__ import annotations
 
