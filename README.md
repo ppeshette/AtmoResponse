@@ -106,6 +106,6 @@ asset caching, explicit Tanager and EMIT catalog access, source-neutral surface 
 Tanager and EMIT adapters, shipped-AOD summaries, AOD reference-selection infrastructure, an AERONET
 AOD provider, the LUT consumer layer, per-sensor sensitivity runners (`run_tanager`, `run_emit`),
 the figure primitives, fixed-library SAM primitives, the bundled wildfire SAM library, and the
-RSI/WI, Wynne CI, and AlOH example algorithms are implemented.
+RSI/WI, Wynne CI, QAA v6 CDOM, and AlOH example algorithms are implemented.
 The GOES, VIIRS, and MERRA-2 aerosol providers and the LUT archive download helper are named but
 not yet implemented.
