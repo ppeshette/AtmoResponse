@@ -10,8 +10,8 @@ import numpy as np
 
 from .aod import AodSummary, summarize_aod
 from .bands import band_index
-from .cache import CacheConfig
 from .cube import HyperspectralCube
+from .storage import resolve_data_dir
 
 RFL_DATASET = "reflectance"
 RAD_DATASET = "radiance"
@@ -123,21 +123,16 @@ _PRODUCT_FILENAMES = {
 
 
 def scene_paths(
-    scene_id: str, cache: CacheConfig | Path | str | None = None
+    scene_id: str, data_dir: str | Path | None = None
 ) -> dict[str, Path]:
-    """Expected cached EMIT product paths for one granule id, e.g.
+    """Expected local EMIT product paths for one granule id, e.g.
     ``20250221T173656_2505212_021``.
 
     Returns a dict keyed ``rfl``, ``rad``, ``obs``, and ``mask``. The collection version
     is ``001`` for every EMIT product, so the names are deterministic rather than
     globbed.
     """
-    if isinstance(cache, CacheConfig):
-        root = cache.child("scenes", scene_id)
-    elif cache is None:
-        root = CacheConfig.default().child("scenes", scene_id)
-    else:
-        root = Path(cache) / "scenes" / scene_id
+    root = resolve_data_dir(data_dir) / "scenes" / scene_id
     return {key: root / name.format(sid=scene_id) for key, name in _PRODUCT_FILENAMES.items()}
 
 

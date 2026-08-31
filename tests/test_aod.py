@@ -94,9 +94,9 @@ def test_summarize_aod_rejects_empty_or_mismatched_inputs():
 
 def test_gather_aod_preserves_source_order_and_skips_missing_data():
     providers = {
-        AodSource.VIIRS: lambda query, cache: estimate(AodSource.VIIRS),
-        AodSource.AERONET: lambda query, cache: None,
-        AodSource.GOES: lambda query, cache: estimate(AodSource.GOES),
+        AodSource.VIIRS: lambda query, data_dir: estimate(AodSource.VIIRS),
+        AodSource.AERONET: lambda query, data_dir: None,
+        AodSource.GOES: lambda query, data_dir: estimate(AodSource.GOES),
     }
 
     refs = gather_aod(
@@ -110,8 +110,8 @@ def test_gather_aod_preserves_source_order_and_skips_missing_data():
 
 def test_gather_aod_skips_unavailable_sources_unless_strict():
     providers = {
-        AodSource.AERONET: lambda query, cache: estimate(AodSource.AERONET),
-        AodSource.GOES: lambda query, cache: (_ for _ in ()).throw(RuntimeError("offline")),
+        AodSource.AERONET: lambda query, data_dir: estimate(AodSource.AERONET),
+        AodSource.GOES: lambda query, data_dir: (_ for _ in ()).throw(RuntimeError("offline")),
     }
 
     refs = gather_aod(
@@ -150,8 +150,8 @@ def test_best_aod_uses_separation_when_aeronet_is_absent():
 
 def test_resolve_aod_uses_injected_providers():
     providers = {
-        AodSource.AERONET: lambda query, cache: estimate(AodSource.AERONET, distance_km=30.0),
-        AodSource.GOES: lambda query, cache: estimate(AodSource.GOES, distance_km=1.0),
+        AodSource.AERONET: lambda query, data_dir: estimate(AodSource.AERONET, distance_km=30.0),
+        AodSource.GOES: lambda query, data_dir: estimate(AodSource.GOES, distance_km=1.0),
     }
 
     ref = resolve_aod(QUERY, providers=providers)
@@ -161,8 +161,8 @@ def test_resolve_aod_uses_injected_providers():
 
 def test_resolve_aod_without_providers_uses_built_ins(monkeypatch):
     providers = {
-        AodSource.AERONET: lambda query, cache: None,
-        AodSource.GOES: lambda query, cache: estimate(AodSource.GOES, distance_km=1.0),
+        AodSource.AERONET: lambda query, data_dir: None,
+        AodSource.GOES: lambda query, data_dir: estimate(AodSource.GOES, distance_km=1.0),
     }
     monkeypatch.setattr(aod_module, "default_providers", lambda sources: providers)
 

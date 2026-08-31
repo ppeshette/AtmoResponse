@@ -22,8 +22,8 @@ REFERENCE_STYLES = {
     "merra2": ("#57606a", "-."),
 }
 
-# Distinct from coolwarm's own near-white zero centre. Without it a genuinely
-# computed near-zero delta and a masked or no-data pixel render identically.
+# Distinct from coolwarm's own near-white zero centre. Without it a computed
+# near-zero delta and a masked or no-data pixel render identically.
 _NODATA_COLOR = "#999999"
 
 # A hue absent from coolwarm and from the usual sequential value-panel maps
@@ -248,7 +248,7 @@ def sensitivity_figure(result, *, references=(), title="", unit="", value_source
     The middle panel grounds the delta, since a delta of ``-0.1`` means something
     different on an output near ``0.3`` than on one near ``2.5``. The variance
     fraction, distribution, and reconstruction-gap panels stay separate and
-    optional. A genuinely different layout should compose
+    optional. A substantially different layout should compose
     :func:`sensitivity_curve_panel`, :func:`sensitivity_value_panel`, and
     :func:`sensitivity_map_panel` into its own grid rather than call this.
 

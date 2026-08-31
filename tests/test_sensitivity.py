@@ -20,13 +20,13 @@ from atmoresponse.sensitivity import (
 from atmoresponse.tanager_ortho import GRID
 
 
-def _write_synthetic_scene(cache_root, scene_id, shipped_aod, cwv, radiance_by_pixel):
+def _write_synthetic_scene(data_root, scene_id, shipped_aod, cwv, radiance_by_pixel):
     """A minimal 1xN HDF5 scene pair with exactly the fields ``run_tanager()`` reads.
 
     ``radiance_by_pixel`` is (N, 2): N pixels, 2 bands at 700/800 nm.
     """
     n = len(shipped_aod)
-    scene_dir = cache_root / "scenes" / scene_id
+    scene_dir = data_root / "scenes" / scene_id
     scene_dir.mkdir(parents=True, exist_ok=True)
     wl = np.array([700.0, 800.0])
     with h5py.File(scene_dir / f"{scene_id}_ortho_sr.h5", "w") as sr:
@@ -71,7 +71,7 @@ def test_run_continuous_realized_sensitivity_delta(tmp_path):
     _write_synthetic_scene(tmp_path, scene_id, shipped_aod, np.ones(3), radiance)
 
     result = run_tanager(scene_id, (0, 1, 0, 3), _full_mask, [700.0, 800.0], 0.20, "Continental",
-                 algorithm=_sum_algorithm, cache=tmp_path, correct=_fake_correct)
+                 algorithm=_sum_algorithm, data_dir=tmp_path, correct=_fake_correct)
 
     want_delta = -(shipped_aod - 0.20) * 2  # 2 bands, each contributes -aod550
     np.testing.assert_allclose(result.delta, want_delta)
@@ -87,7 +87,7 @@ def test_run_reads_aoi_block_then_masks(tmp_path):
     mask = lambda sr, aoi: np.array([[True, False, True]])
 
     result = run_tanager(scene_id, (0, 1, 0, 3), mask, [700.0, 800.0], 0.2, "Continental",
-                 algorithm=_sum_algorithm, cache=tmp_path, correct=_fake_correct)
+                 algorithm=_sum_algorithm, data_dir=tmp_path, correct=_fake_correct)
 
     assert np.array_equal(result.rows, [0, 0])
     assert np.array_equal(result.cols, [0, 2])
@@ -105,9 +105,9 @@ def test_run_classification_and_grouping(tmp_path):
         return LabeledScore(value=value, label="low" if value > 0.5 else "high")
 
     raw = run_tanager(scene_id, (0, 1, 0, 3), _full_mask, [700.0, 800.0], 0.10, "Continental",
-              algorithm=classify, cache=tmp_path, correct=_fake_correct)
+              algorithm=classify, data_dir=tmp_path, correct=_fake_correct)
     grouped = run_tanager(scene_id, (0, 1, 0, 3), _full_mask, [700.0, 800.0], 0.10, "Continental",
-                  algorithm=classify, cache=tmp_path, correct=_fake_correct,
+                  algorithm=classify, data_dir=tmp_path, correct=_fake_correct,
                   group_labels={"low": "same", "high": "same"})
 
     assert list(raw.class_changed) == [False, True, False]
@@ -125,7 +125,7 @@ def test_run_fit_derives_algorithm_from_radiance(tmp_path):
         return _sum_algorithm
 
     result = run_tanager(scene_id, (0, 1, 0, 3), _full_mask, [700.0, 800.0], 0.2, "Continental",
-                 fit=fit, cache=tmp_path, correct=_fake_correct)
+                 fit=fit, data_dir=tmp_path, correct=_fake_correct)
 
     assert seen["radiance_shape"] == (3, 2)  # fit sees the raw radiance population
     assert len(result.delta) == 3
@@ -136,7 +136,7 @@ def test_run_requires_exactly_one_of_algorithm_or_fit(tmp_path):
     _write_synthetic_scene(tmp_path, scene_id, np.array([0.1]), np.ones(1), np.ones((1, 2)))
     with pytest.raises(ValueError, match="exactly one"):
         run_tanager(scene_id, (0, 1, 0, 1), _full_mask, [700.0, 800.0], 0.2, "Continental",
-            cache=tmp_path, correct=_fake_correct)
+            data_dir=tmp_path, correct=_fake_correct)
 
 
 def test_scored_slices_without_recomputing(tmp_path):
@@ -144,7 +144,7 @@ def test_scored_slices_without_recomputing(tmp_path):
     shipped_aod = np.array([0.10, 0.30, 0.50])
     _write_synthetic_scene(tmp_path, scene_id, shipped_aod, np.ones(3), np.ones((3, 2)))
     result = run_tanager(scene_id, (0, 1, 0, 3), _full_mask, [700.0, 800.0], 0.2, "Continental",
-                 algorithm=_sum_algorithm, cache=tmp_path, correct=_fake_correct)
+                 algorithm=_sum_algorithm, data_dir=tmp_path, correct=_fake_correct)
 
     region = np.zeros(result.shape, dtype=bool)
     region[0, 1] = True
@@ -160,7 +160,7 @@ def test_value_map_and_delta_map(tmp_path):
     _write_synthetic_scene(tmp_path, scene_id, np.array([0.1, 0.3, 0.5]), np.ones(3),
                            np.ones((3, 2)))
     result = run_tanager(scene_id, (0, 1, 0, 3), _full_mask, [700.0, 800.0], 0.2, "Continental",
-                 algorithm=_sum_algorithm, cache=tmp_path, correct=_fake_correct)
+                 algorithm=_sum_algorithm, data_dir=tmp_path, correct=_fake_correct)
 
     np.testing.assert_array_equal(result.value_map(result.delta), result.delta_map())
     shipped_map = result.value_map(result.at_shipped)
@@ -171,7 +171,7 @@ def test_run_workers_matches_serial(tmp_path):
     scene_id = "20250101_000000_00_0007"
     _write_synthetic_scene(tmp_path, scene_id, np.array([0.10, 0.30, 0.50]), np.ones(3),
                            np.ones((3, 2)))
-    common = dict(algorithm=_PicklableAlgo(), cache=tmp_path, correct=_picklable_correct,
+    common = dict(algorithm=_PicklableAlgo(), data_dir=tmp_path, correct=_picklable_correct,
                   chunksize=2)
     serial = run_tanager(scene_id, (0, 1, 0, 3), _full_mask, [700.0, 800.0], 0.2, "Continental",
                  **common)
@@ -251,7 +251,7 @@ def test_run_emit_realized_sensitivity_with_injected_correct(tmp_path):
     _write_synthetic_emit_scene(tmp_path, scene_id, shipped_aod, np.ones(3), radiance)
 
     result = run_emit(scene_id, (0, 1, 0, 3), _emit_mask, [700.0, 800.0], 0.20, "Maritime",
-                      algorithm=_sum_algorithm, cache=tmp_path, correct=_fake_correct)
+                      algorithm=_sum_algorithm, data_dir=tmp_path, correct=_fake_correct)
 
     # _fake_correct subtracts AOD from each band; _sum_algorithm sums two bands,
     # so delta = at_shipped - at_reference = -2 * (shipped_aod - 0.20).
@@ -277,7 +277,7 @@ def test_run_emit_reads_obs_geometry(tmp_path, monkeypatch):
         obs["obs"][0, 0, 2] = 4.0
 
     run_emit(scene_id, (0, 1, 0, 1), _emit_mask, [700.0, 800.0], 0.2, "Maritime",
-             algorithm=_sum_algorithm, cache=tmp_path, correct=spy_correct)
+             algorithm=_sum_algorithm, data_dir=tmp_path, correct=spy_correct)
     assert seen["sun_z"] == 33.0
     assert seen["view_z"] == 4.0
 
@@ -286,7 +286,7 @@ def test_run_emit_rejects_both_algorithm_and_fit(tmp_path):
     scene_id = "20250101T000000_2500101_003"
     _write_synthetic_emit_scene(tmp_path, scene_id, np.array([0.2]), np.ones(1), np.ones((1, 2)))
     with pytest.raises(ValueError, match="exactly one"):
-        run_emit(scene_id, (0, 1, 0, 1), _emit_mask, [700.0], 0.2, "Maritime", cache=tmp_path,
+        run_emit(scene_id, (0, 1, 0, 1), _emit_mask, [700.0], 0.2, "Maritime", data_dir=tmp_path,
                  correct=_fake_correct)
 
 
@@ -309,7 +309,7 @@ def test_run_tanager_threads_the_lut_directory(tmp_path, monkeypatch):
 
     monkeypatch.setattr(sensitivity, "_run_from_arrays", spy)
     run_tanager(scene_id, (0, 1, 0, 1), _full_mask, [700.0, 800.0], 0.2, "Continental",
-                algorithm=_sum_algorithm, cache=tmp_path, correct=_fake_correct,
+                algorithm=_sum_algorithm, data_dir=tmp_path, correct=_fake_correct,
                 lut=tmp_path / "my_lut")
     assert seen["lut_root"].replace("\\", "/").endswith("my_lut/shards")
 

@@ -5,7 +5,7 @@ AtmoResponse traces atmospheric-correction assumptions into Tanager reflectance 
 The repository is the public project package for the Planet Tanager Open Data Competition
 submission. It is being assembled as a release artifact: source code, report files, an annotated
 notebook, and lightweight reproducibility assets belong here. Scene data, bulky derived products,
-local caches, and credentials do not.
+the local data directory, and credentials do not.
 
 ## Repository Layout
 
@@ -79,9 +79,10 @@ AtmoResponse walks Planet's static Tanager STAC catalog directly. It does not re
 server for catalog search.
 EMIT catalog searches use NASA CMR and can target either L2A reflectance or L1B radiance products.
 
-AtmoResponse uses a cache-first workflow. Set `ATMORESPONSE_CACHE` to choose the local cache
-location. If the variable is unset, the package uses a platform cache directory under the current
-user profile. Scene asset downloads are written to temporary files first, then moved into the cache
+Downloads are cache-first: a scene, LUT archive, or reference file already present is reused rather
+than fetched again. They persist between runs and are not deleted automatically. Set
+`ATMORESPONSE_DATA` to place the data directory where you want it; unset, it defaults to
+`~/atmoresponse_data`. Each download is written to a temporary file first, then moved into place
 when complete.
 
 ## Look-up table
@@ -100,7 +101,7 @@ archive on Zenodo. Fetch and unpack it with `download_lut`:
 ```python
 from atmoresponse.downloads import download_lut
 
-store = download_lut("tanager")            # into the default cache, idempotent
+store = download_lut("tanager")            # into the data directory, idempotent
 result = run_tanager(..., lut=store)
 ```
 
@@ -118,8 +119,8 @@ described in the report.
 ## Current Scaffold
 
 This scaffold defines the public import boundary while the full implementation is assembled.
-Shared scene models, a neutral hyperspectral cube, cache-backed downloads, source-neutral scene
-asset caching, explicit Tanager and EMIT catalog access, source-neutral surface classification,
+Shared scene models, a neutral hyperspectral cube, cache-first downloads into the local data
+directory, explicit Tanager and EMIT catalog access, source-neutral surface classification,
 Tanager and EMIT adapters, shipped-AOD summaries, AOD reference selection from AERONET, GOES,
 VIIRS, and MERRA-2, the LUT consumer layer, the LUT archive download helper (`download_lut`), per-sensor
 sensitivity runners (`run_tanager`, `run_emit`), the figure primitives, fixed-library SAM

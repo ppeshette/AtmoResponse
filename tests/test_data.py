@@ -2,10 +2,9 @@ import datetime as dt
 
 import pytest
 
-from atmoresponse.cache import CacheConfig
 from atmoresponse.downloads import download_file
 from atmoresponse.catalog import SceneAssets, SceneRecord
-from atmoresponse.data import cache_scene_files, local_scene_files
+from atmoresponse.data import download_scene_files, local_scene_files
 from atmoresponse import tanager_data
 
 
@@ -106,7 +105,7 @@ def test_tanager_data_caches_sr_and_radiance_with_stable_names(tmp_path):
         auxiliary={"quicklook": "https://example.test/quicklook.tif"},
     )
 
-    files = tanager_data.cache_scene_files(assets, cache=CacheConfig(tmp_path), session=session)
+    files = tanager_data.download_scene_files(assets, data_dir=tmp_path, session=session)
 
     assert files.surface_reflectance == tmp_path / "scenes" / "scene-a" / "scene-a_ortho_sr.h5"
     assert files.radiance == tmp_path / "scenes" / "scene-a" / "scene-a_ortho_radiance.h5"
@@ -128,9 +127,9 @@ def test_tanager_data_can_include_auxiliary_assets(tmp_path):
         auxiliary={"quicklook": "https://example.test/quicklook.tif"},
     )
 
-    files = tanager_data.cache_scene_files(
+    files = tanager_data.download_scene_files(
         assets,
-        cache=CacheConfig(tmp_path),
+        data_dir=tmp_path,
         session=session,
         include_auxiliary=True,
     )
@@ -139,12 +138,12 @@ def test_tanager_data_can_include_auxiliary_assets(tmp_path):
     assert files.auxiliary["quicklook"].read_bytes() == b"ql"
 
 
-def test_cache_scene_files_can_use_source_neutral_filenames(tmp_path):
+def test_download_scene_files_can_use_source_neutral_filenames(tmp_path):
     url = "https://example.test/emit-reflectance.nc"
     session = FakeDownloadSession({url: b"emit"})
     assets = SceneAssets(scene=_scene_record(), surface_reflectance=url)
 
-    files = cache_scene_files(assets, cache=CacheConfig(tmp_path), session=session)
+    files = download_scene_files(assets, data_dir=tmp_path, session=session)
 
     assert files.surface_reflectance == tmp_path / "scenes" / "scene-a" / "emit-reflectance.nc"
     assert files.surface_reflectance.read_bytes() == b"emit"
@@ -180,7 +179,7 @@ def test_fetch_scene_resolves_id_from_supplied_records(tmp_path):
     )
 
     files = tanager_data.fetch_scene(
-        "scene-a", cache=CacheConfig(tmp_path), records=[record], session=session)
+        "scene-a", data_dir=tmp_path, records=[record], session=session)
 
     assert files.surface_reflectance == tmp_path / "scenes" / "scene-a" / "scene-a_ortho_sr.h5"
     assert files.surface_reflectance.read_bytes() == b"sr"
@@ -189,4 +188,4 @@ def test_fetch_scene_resolves_id_from_supplied_records(tmp_path):
 
 def test_fetch_scene_unknown_id_raises_keyerror(tmp_path):
     with pytest.raises(KeyError, match="not found in the Tanager catalog"):
-        tanager_data.fetch_scene("missing", cache=CacheConfig(tmp_path), records=[])
+        tanager_data.fetch_scene("missing", data_dir=tmp_path, records=[])

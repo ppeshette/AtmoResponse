@@ -9,9 +9,9 @@ from urllib.parse import unquote, urlparse
 
 import requests
 
-from .cache import CacheConfig
 from .catalog import SceneAssets, SceneRecord
 from .downloads import CHUNK_SIZE, DownloadResult, download_file
+from .storage import resolve_data_dir
 
 
 @dataclass(frozen=True)
@@ -34,27 +34,30 @@ def _url_basename(url: str) -> str:
 
 
 def _asset_path(
-    cache: CacheConfig,
+    data_dir: Path,
     scene_id: str,
     role: str,
     url: str,
     role_filenames: Mapping[str, str] | None,
 ) -> Path:
     if role_filenames is not None and role in role_filenames:
-        return cache.child("scenes", scene_id, role_filenames[role])
-    return cache.child("scenes", scene_id, _url_basename(url))
+        return data_dir / "scenes" / scene_id / role_filenames[role]
+    return data_dir / "scenes" / scene_id / _url_basename(url)
 
 
-def cache_scene_files(
+def download_scene_files(
     assets: SceneAssets,
-    cache: CacheConfig | None = None,
+    data_dir: str | Path | None = None,
     session: requests.Session | None = None,
     include_auxiliary: bool = False,
     role_filenames: Mapping[str, str] | None = None,
 ) -> LocalSceneFiles:
-    """Download a scene's selected assets into local cache paths."""
+    """Download a scene's selected assets into the local data directory.
 
-    cache = cache or CacheConfig.default()
+    Cache-first: an asset already present under ``data_dir`` is reused.
+    """
+
+    data_dir = resolve_data_dir(data_dir)
     session = session or requests.Session()
     scene_id = assets.scene.scene_id
 
@@ -62,7 +65,7 @@ def cache_scene_files(
     if assets.surface_reflectance is not None:
         surface_reflectance = download_file(
             assets.surface_reflectance,
-            _asset_path(cache, scene_id, "surface_reflectance", assets.surface_reflectance, role_filenames),
+            _asset_path(data_dir, scene_id, "surface_reflectance", assets.surface_reflectance, role_filenames),
             session=session,
         ).path
 
@@ -70,7 +73,7 @@ def cache_scene_files(
     if assets.radiance is not None:
         radiance = download_file(
             assets.radiance,
-            _asset_path(cache, scene_id, "radiance", assets.radiance, role_filenames),
+            _asset_path(data_dir, scene_id, "radiance", assets.radiance, role_filenames),
             session=session,
         ).path
 
@@ -78,7 +81,7 @@ def cache_scene_files(
     if assets.metadata is not None:
         metadata = download_file(
             assets.metadata,
-            _asset_path(cache, scene_id, "metadata", assets.metadata, role_filenames),
+            _asset_path(data_dir, scene_id, "metadata", assets.metadata, role_filenames),
             session=session,
         ).path
 
@@ -87,7 +90,7 @@ def cache_scene_files(
         for name, url in assets.auxiliary.items():
             auxiliary[name] = download_file(
                 url,
-                _asset_path(cache, scene_id, name, url, role_filenames),
+                _asset_path(data_dir, scene_id, name, url, role_filenames),
                 session=session,
             ).path
 

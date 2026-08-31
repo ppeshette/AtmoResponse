@@ -1,14 +1,14 @@
-"""Tanager scene cache naming policy."""
+"""Tanager scene file-naming policy over the source-neutral downloader."""
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Sequence
 
 import requests
 
-from .cache import CacheConfig
 from .catalog import SceneAssets, SceneQuery, SceneRecord
-from .data import LocalSceneFiles, cache_scene_files as _cache_scene_files
+from .data import LocalSceneFiles, download_scene_files as _download_scene_files
 
 ROLE_FILENAMES = {
     "surface_reflectance": "{scene_id}_ortho_sr.h5",
@@ -16,22 +16,22 @@ ROLE_FILENAMES = {
 }
 
 
-def cache_scene_files(
+def download_scene_files(
     assets: SceneAssets,
-    cache: CacheConfig | None = None,
+    data_dir: str | Path | None = None,
     session: requests.Session | None = None,
     include_auxiliary: bool = False,
 ) -> LocalSceneFiles:
-    """Resolve a Tanager scene's selected STAC assets into local cache paths."""
+    """Download a Tanager scene's selected STAC assets into the data directory."""
 
     scene_id = assets.scene.scene_id
     role_filenames = {
         role: template.format(scene_id=scene_id)
         for role, template in ROLE_FILENAMES.items()
     }
-    return _cache_scene_files(
+    return _download_scene_files(
         assets,
-        cache=cache,
+        data_dir=data_dir,
         session=session,
         include_auxiliary=include_auxiliary,
         role_filenames=role_filenames,
@@ -40,17 +40,17 @@ def cache_scene_files(
 
 def fetch_scene(
     scene_id: str,
-    cache: CacheConfig | None = None,
+    data_dir: str | Path | None = None,
     *,
     records: Sequence[SceneRecord] | None = None,
     session: requests.Session | None = None,
 ) -> LocalSceneFiles:
     """Resolve one Tanager scene id to local surface-reflectance and radiance
-    paths, downloading them into ``cache`` on first use.
+    paths, downloading them into ``data_dir`` on first use.
 
     This is the one-call form of ``search_scenes`` then ``get_scene_assets`` then
-    ``cache_scene_files``. Downloads are cache-first, so an already-local scene
-    returns without transferring the files again.
+    ``download_scene_files``. Downloads are cache-first, so an already-local
+    scene returns without transferring the files again.
 
     ``search_scenes`` walks the whole static catalog, so when fetching several
     scenes pass ``records`` from a single prior ``search_scenes`` call and the
@@ -66,4 +66,4 @@ def fetch_scene(
         raise KeyError(f"scene id not found in the Tanager catalog: {scene_id}") from None
 
     assets = tanager_catalog.get_scene_assets(record)
-    return cache_scene_files(assets, cache=cache, session=session)
+    return download_scene_files(assets, data_dir=data_dir, session=session)

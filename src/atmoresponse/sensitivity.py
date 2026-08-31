@@ -672,7 +672,7 @@ def run_tanager(
     extra_curve_aod: Sequence[float] = (),
     unit: str = "",
     algorithm_name: str = "",
-    cache=None,
+    data_dir=None,
     lut=None,
     correct: Callable[..., np.ndarray] | None = None,
     workers: int = 1,
@@ -684,8 +684,8 @@ def run_tanager(
     ``fit``'s radiance-domain requirement, and ``node_only``. Exactly one of
     ``algorithm`` or ``fit`` is required.
 
-    ``cache`` is passed to ``tanager_ortho.scene_paths`` (a ``CacheConfig``, a
-    path, or ``None`` for the default cache). The scene files must already be
+    ``data_dir`` is passed to ``tanager_ortho.scene_paths`` (a path, or ``None``
+    for the default under ``ATMORESPONSE_DATA``). The scene files must already be
     local.
 
     ``lut`` is the Tanager LUT archive directory (the one that contains
@@ -694,7 +694,7 @@ def run_tanager(
     if (algorithm is None) == (fit is None):
         raise ValueError("pass exactly one of `algorithm` or `fit`")
 
-    sr_path, l1_path = extract.scene_paths(scene_id, cache)
+    sr_path, l1_path = extract.scene_paths(scene_id, data_dir)
     with h5py.File(sr_path, "r") as sr, h5py.File(l1_path, "r") as l1:
         extract.validate_aoi(sr, aoi)
         valid = mask(sr, aoi)
@@ -744,7 +744,7 @@ def run_emit(
     extra_curve_aod: Sequence[float] = (),
     unit: str = "",
     algorithm_name: str = "",
-    cache=None,
+    data_dir=None,
     lut=None,
     paths: Mapping[str, str] | None = None,
     correct: Callable[..., np.ndarray] | None = None,
@@ -765,7 +765,7 @@ def run_emit(
 
     ``paths`` overrides file resolution with an explicit
     ``{"rfl","rad","obs","mask"}`` mapping, for a caller whose EMIT files are
-    already local and not laid out under ``cache``.
+    already local and not laid out under ``data_dir``.
 
     See ``run_tanager`` and the module docstring for ``mask`` vs.
     ``scoring_region``, ``fit``'s radiance-domain requirement, and ``node_only``.
@@ -773,7 +773,7 @@ def run_emit(
     if (algorithm is None) == (fit is None):
         raise ValueError("pass exactly one of `algorithm` or `fit`")
 
-    resolved = dict(emit_reader.scene_paths(scene_id, cache))
+    resolved = dict(emit_reader.scene_paths(scene_id, data_dir))
     if paths is not None:
         resolved.update(paths)
 

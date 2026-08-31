@@ -5,12 +5,12 @@ from __future__ import annotations
 import datetime as dt
 import math
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Mapping, Sequence
 
 import requests
 
 from .aod import AodEstimate, AodQuery, AodSource, REGIONAL_KM
-from .cache import CacheConfig
 from .geo import haversine_km
 
 SITE_LIST_URL = "https://aeronet.gsfc.nasa.gov/aeronet_locations_v3.txt"
@@ -183,16 +183,20 @@ def candidate_sites(
 
 def from_aeronet(
     query: AodQuery,
-    cache: CacheConfig | None = None,
+    data_dir: str | Path | None = None,
     *,
     session: requests.Session | None = None,
     sites: Sequence[AeronetSite] | None = None,
     level: str = "AOD15",
     avg: int = 10,
 ) -> AodEstimate | None:
-    """Return the nearest usable AERONET AOD550 estimate for a query."""
+    """Return the nearest usable AERONET AOD550 estimate for a query.
 
-    _ = cache
+    ``data_dir`` is accepted for the provider protocol and unused: AERONET is
+    queried live and nothing is written to the data directory.
+    """
+
+    _ = data_dir
     session = session or requests.Session()
     sites = list(sites) if sites is not None else fetch_site_list(session)
     max_dt_minutes = query.max_dt_minutes or DEFAULT_MAX_DT_MINUTES
@@ -231,10 +235,10 @@ def aeronet_providers(
 ):
     """Return a provider mapping containing the AERONET source."""
 
-    def provider(query: AodQuery, cache: CacheConfig | None = None) -> AodEstimate | None:
+    def provider(query: AodQuery, data_dir: str | Path | None = None) -> AodEstimate | None:
         return from_aeronet(
             query,
-            cache,
+            data_dir,
             session=session,
             sites=sites,
             level=level,

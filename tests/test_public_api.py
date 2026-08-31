@@ -4,7 +4,7 @@ import atmoresponse
 def test_package_root_exports_stable_data_front_door():
     assert atmoresponse.__all__ == [
         "__version__",
-        "CacheConfig",
+        "default_data_dir",
         "HyperspectralCube",
         "LandCoverSample",
         "LocalSceneFiles",
@@ -50,7 +50,7 @@ def test_domain_apis_stay_under_modules():
     assert atmoresponse.LandCoverSample is surface_classes.LandCoverSample
     assert atmoresponse.SceneRecord is catalog.SceneRecord
     assert atmoresponse.SurfaceClassification is surface_classes.SurfaceClassification
-    assert callable(data.cache_scene_files)
+    assert callable(data.download_scene_files)
     assert callable(downloads.download_file)
     assert callable(downloads.download_lut)
     assert callable(geo.haversine_km)
@@ -66,7 +66,7 @@ def test_domain_apis_stay_under_modules():
     assert callable(plotting.sensitivity_figure)
     assert callable(surface_classes.classify_scene_surface)
     assert callable(tanager_catalog.search_scenes)
-    assert callable(tanager_data.cache_scene_files)
+    assert callable(tanager_data.download_scene_files)
     assert callable(tanager_data.fetch_scene)
     assert callable(tanager_ortho.radiance_at)
     assert callable(tanager_ortho.shipped_aod_summary)
@@ -78,7 +78,7 @@ def test_domain_apis_stay_under_modules():
 
 def test_low_level_helpers_are_not_root_exports():
     assert "build_index" not in atmoresponse.__all__
-    assert "cache_scene_files" not in atmoresponse.__all__
+    assert "download_scene_files" not in atmoresponse.__all__
     assert "classify_scene_surface" not in atmoresponse.__all__
     assert "download_file" not in atmoresponse.__all__
     assert "from_aeronet" not in atmoresponse.__all__

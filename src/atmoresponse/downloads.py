@@ -12,14 +12,14 @@ from urllib.request import url2pathname
 
 import requests
 
-from .cache import CacheConfig
+from .storage import resolve_data_dir
 
 CHUNK_SIZE = 8 * 1024 * 1024
 
 
 @dataclass(frozen=True)
 class DownloadResult:
-    """Result of resolving one URL into the local cache."""
+    """Result of resolving one URL into a local file."""
 
     path: Path
     downloaded: bool
@@ -115,7 +115,7 @@ def _sha256(path: Path) -> str:
 
 def _fetch_archive(url: str, destination: Path, session: requests.Session | None) -> None:
     """Fetch ``url`` to ``destination``. An http(s) URL goes through
-    ``download_file``; a ``file://`` URL or a bare local path is copied directly,
+    ``download_file``. A ``file://`` URL or a bare local path is copied directly,
     which is what the tests and a Zenodo-sandbox dry run use."""
     if url.startswith(("http://", "https://")):
         download_file(url, destination, session=session)
@@ -138,7 +138,7 @@ def download_lut(
     sensor: str,
     dest: str | Path | None = None,
     *,
-    cache: CacheConfig | None = None,
+    data_dir: str | Path | None = None,
     url: str | None = None,
     sha256: str | None = None,
     session: requests.Session | None = None,
@@ -153,7 +153,10 @@ def download_lut(
     ``sensor`` is ``"tanager"`` or ``"emit"``. With no ``url`` the published
     archive for that sensor is used. Pass ``url`` (an https URL, a ``file://``
     URL, or a bare local path) to fetch a specific archive such as a Zenodo
-    sandbox draft or a mirror; ``sha256`` overrides the expected checksum.
+    sandbox draft or a mirror. ``sha256`` overrides the expected checksum.
+
+    ``dest`` is the exact store directory. Without it the store goes under
+    ``data_dir`` (or the default data directory) at ``lut/lut_store_<sensor>``.
 
     The unpack is idempotent: an existing populated ``shards/`` is reused unless
     ``force=True``.
@@ -177,8 +180,7 @@ def download_lut(
     if dest is not None:
         store = Path(dest)
     else:
-        cache = cache or CacheConfig.default()
-        store = cache.child("lut", f"lut_store_{sensor}")
+        store = resolve_data_dir(data_dir) / "lut" / f"lut_store_{sensor}"
 
     if (store / "shards").is_dir() and any((store / "shards").glob("shard_*.npz")) and not force:
         return store

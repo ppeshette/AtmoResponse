@@ -10,21 +10,16 @@ import numpy as np
 
 from .aod import AodSummary, summarize_aod
 from .bands import band_index
-from .cache import CacheConfig
 from .cube import HyperspectralCube
+from .storage import resolve_data_dir
 
 GRID = "HDFEOS/GRIDS/HYP/Data Fields/"
 
 
-def scene_paths(scene_id: str, cache: CacheConfig | Path | str | None = None) -> tuple[Path, Path]:
-    """Return the expected cached Tanager SR and radiance HDF5 paths for one scene."""
+def scene_paths(scene_id: str, data_dir: str | Path | None = None) -> tuple[Path, Path]:
+    """Return the expected local Tanager SR and radiance HDF5 paths for one scene."""
 
-    if isinstance(cache, CacheConfig):
-        root = cache.child("scenes", scene_id)
-    elif cache is None:
-        root = CacheConfig.default().child("scenes", scene_id)
-    else:
-        root = Path(cache) / "scenes" / scene_id
+    root = resolve_data_dir(data_dir) / "scenes" / scene_id
     return root / f"{scene_id}_ortho_sr.h5", root / f"{scene_id}_ortho_radiance.h5"
 
 

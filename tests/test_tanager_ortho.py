@@ -1,7 +1,6 @@
 import h5py
 import numpy as np
 
-from atmoresponse.cache import CacheConfig
 from atmoresponse.tanager_ortho import (
     GRID,
     column_water_vapour,
@@ -63,8 +62,8 @@ def test_band_index_uses_nearest_wavelength():
     assert band_index(WL_NM, 998.0) == 5
 
 
-def test_scene_paths_use_cache_layout(tmp_path):
-    sr_path, l1_path = scene_paths("scene-a", CacheConfig(tmp_path))
+def test_scene_paths_use_data_dir_layout(tmp_path):
+    sr_path, l1_path = scene_paths("scene-a", tmp_path)
 
     assert sr_path == tmp_path / "scenes" / "scene-a" / "scene-a_ortho_sr.h5"
     assert l1_path == tmp_path / "scenes" / "scene-a" / "scene-a_ortho_radiance.h5"

@@ -9,7 +9,6 @@ import h5py
 import numpy as np
 
 from . import lut, tanager_ortho
-from .cache import CacheConfig
 from .recipes import agriculture, water
 
 
@@ -108,11 +107,11 @@ def finite_tanager_inputs(
     aoi: tuple[int, int, int, int],
     band_targets_nm: Sequence[float],
     *,
-    cache: CacheConfig | Path | str | None = None,
+    data_dir: str | Path | None = None,
 ) -> np.ndarray:
     """Pixels with finite Tanager L1 radiance and geometry for a run."""
 
-    _, l1_path = tanager_ortho.scene_paths(scene_id, cache)
+    _, l1_path = tanager_ortho.scene_paths(scene_id, data_dir)
     with h5py.File(l1_path, "r") as l1_h5:
         _, radiance = tanager_ortho.radiance_at(l1_h5, band_targets_nm, aoi=aoi)
         geometry = tanager_ortho.geometry(l1_h5, aoi=aoi)
@@ -191,7 +190,7 @@ def tanager_admissible(
     aoi: tuple[int, int, int, int],
     scene_id: str,
     band_targets_nm: Sequence[float],
-    cache: CacheConfig | Path | str | None = None,
+    data_dir: str | Path | None = None,
     selector: Callable[[h5py.File, tuple[int, int, int, int]], np.ndarray] | None = None,
     axes=None,
     sensor: str = "tanager",
@@ -205,7 +204,7 @@ def tanager_admissible(
     return combine_all(
         base,
         aod_in_lut(sr_h5, aoi=aoi, axes=axes, sensor=sensor),
-        finite_tanager_inputs(scene_id, aoi, band_targets_nm, cache=cache),
+        finite_tanager_inputs(scene_id, aoi, band_targets_nm, data_dir=data_dir),
     )
 
 
@@ -214,7 +213,7 @@ def admissible(
     band_targets_nm: Sequence[float],
     domain: Callable[..., np.ndarray] | None = None,
     *,
-    cache: CacheConfig | Path | str | None = None,
+    data_dir: str | Path | None = None,
 ) -> Callable[[h5py.File, tuple[int, int, int, int]], np.ndarray]:
     """Build the ``mask`` argument for ``run_tanager`` in one call.
 
@@ -231,7 +230,7 @@ def admissible(
             aoi=aoi,
             scene_id=scene_id,
             band_targets_nm=band_targets_nm,
-            cache=cache,
+            data_dir=data_dir,
             selector=None if domain is None else (lambda h5, window: domain(h5, aoi=window)),
         )
 

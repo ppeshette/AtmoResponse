@@ -12,9 +12,9 @@ from typing import Callable, Mapping, Sequence
 
 import numpy as np
 
-from .cache import CacheConfig
 from .downloads import download_file
 from .geo import haversine_km
+from .storage import resolve_data_dir
 
 CO_LOCATED_KM = 25.0
 REGIONAL_KM = 100.0
@@ -111,7 +111,7 @@ class AodSummary:
     detail: str
 
 
-AodProvider = Callable[[AodQuery, CacheConfig | None], AodEstimate | None]
+AodProvider = Callable[[AodQuery, "str | Path | None"], AodEstimate | None]
 
 
 def _when_utc_naive(when: dt.datetime) -> dt.datetime:
@@ -120,8 +120,8 @@ def _when_utc_naive(when: dt.datetime) -> dt.datetime:
     return when.astimezone(dt.timezone.utc).replace(tzinfo=None)
 
 
-def _cache_root(cache: CacheConfig | None) -> Path:
-    return (cache or CacheConfig.default()).child("aod_reference")
+def _reference_dir(data_dir: str | Path | None) -> Path:
+    return resolve_data_dir(data_dir) / "aod_reference"
 
 
 def _max_dt_minutes(query: AodQuery, default: float) -> float:
@@ -182,13 +182,13 @@ def summarize_aod(
     )
 
 
-def from_viirs(query: AodQuery, cache: CacheConfig | None = None) -> AodEstimate | None:
+def from_viirs(query: AodQuery, data_dir: str | Path | None = None) -> AodEstimate | None:
     """Return the nearest good-quality VIIRS Dark Target AOD550 pixel."""
 
     import h5py
 
     max_dt_minutes = _max_dt_minutes(query, DEFAULT_MAX_DT_MINUTES)
-    granule = _fetch_earthdata_granule(VIIRS_PRODUCTS, query, max_dt_minutes, _cache_root(cache))
+    granule = _fetch_earthdata_granule(VIIRS_PRODUCTS, query, max_dt_minutes, _reference_dir(data_dir))
     if granule is None:
         return None
     path, dt_minutes = granule
@@ -231,12 +231,12 @@ def from_viirs(query: AodQuery, cache: CacheConfig | None = None) -> AodEstimate
     return estimate if _within_query_limits(query, estimate) else None
 
 
-def from_merra2(query: AodQuery, cache: CacheConfig | None = None) -> AodEstimate | None:
+def from_merra2(query: AodQuery, data_dir: str | Path | None = None) -> AodEstimate | None:
     """Return MERRA-2 total aerosol extinction AOD550 for the nearest cell and hour."""
 
     import xarray as xr
 
-    path = _fetch_merra2(query, _cache_root(cache))
+    path = _fetch_merra2(query, _reference_dir(data_dir))
     if path is None:
         return None
 
@@ -297,7 +297,7 @@ def goes_candidates(latitude: float, longitude: float) -> list[tuple[str, float]
     return [(satellite, vza) for _, _, satellite, vza in sorted(scored)]
 
 
-def from_goes(query: AodQuery, cache: CacheConfig | None = None) -> AodEstimate | None:
+def from_goes(query: AodQuery, data_dir: str | Path | None = None) -> AodEstimate | None:
     """Return NOAA GOES ABI full-disk AOD550 from the nearest usable pixel."""
 
     from netCDF4 import Dataset
@@ -309,7 +309,7 @@ def from_goes(query: AodQuery, cache: CacheConfig | None = None) -> AodEstimate 
             satellite,
             when,
             max_dt_minutes,
-            _cache_root(cache),
+            _reference_dir(data_dir),
         )
         if granule is None:
             continue
@@ -385,9 +385,9 @@ def _fetch_goes_granule(
     satellite: str,
     when: dt.datetime,
     max_dt_minutes: float,
-    cache_root: Path,
+    reference_dir: Path,
 ) -> tuple[Path, float] | None:
-    out = cache_root / "goes" / satellite / when.strftime("%Y%m%d_%H")
+    out = reference_dir / "goes" / satellite / when.strftime("%Y%m%d_%H")
     best = None
     for key, stamp in _list_goes_keys(satellite, when, max_dt_minutes):
         dt_minutes = abs((stamp - when).total_seconds()) / 60.0
@@ -438,12 +438,12 @@ def _list_goes_keys(
     return out
 
 
-def _fetch_merra2(query: AodQuery, cache_root: Path) -> Path | None:
+def _fetch_merra2(query: AodQuery, reference_dir: Path) -> Path | None:
     import earthaccess
 
     when = _when_utc_naive(query.when)
     day = when.strftime("%Y-%m-%d")
-    out = cache_root / "merra2" / day.replace("-", "")
+    out = reference_dir / "merra2" / day.replace("-", "")
     hit = sorted(out.glob("MERRA2_*.nc4"))
     if hit:
         return hit[0]
@@ -461,7 +461,7 @@ def _fetch_earthdata_granule(
     short_names: Sequence[str],
     query: AodQuery,
     max_dt_minutes: float,
-    cache_root: Path,
+    reference_dir: Path,
 ) -> tuple[Path, float] | None:
     import earthaccess
 
@@ -478,7 +478,7 @@ def _fetch_earthdata_granule(
 
     best = None
     for short_name in short_names:
-        out = cache_root / short_name.lower() / key
+        out = reference_dir / short_name.lower() / key
         hit = sorted(out.glob("*.nc"))
         if not hit:
             earthaccess.login(strategy="netrc")
@@ -553,7 +553,7 @@ def gather_aod(
         AodSource.VIIRS,
         AodSource.MERRA2,
     ),
-    cache: CacheConfig | None = None,
+    data_dir: str | Path | None = None,
     *,
     strict: bool = False,
 ) -> list[AodEstimate]:
@@ -568,7 +568,7 @@ def gather_aod(
         if provider is None:
             continue
         try:
-            estimate = provider(query, cache)
+            estimate = provider(query, data_dir)
         except Exception as exc:
             if strict:
                 raise RuntimeError(f"{source.value} AOD provider failed") from exc
@@ -599,7 +599,7 @@ def resolve_aod(
         AodSource.VIIRS,
         AodSource.MERRA2,
     ),
-    cache: CacheConfig | None = None,
+    data_dir: str | Path | None = None,
     providers: Mapping[AodSource, AodProvider] | None = None,
     strict: bool = False,
 ) -> AodEstimate | None:
@@ -609,5 +609,5 @@ def resolve_aod(
         providers = default_providers(sources)
 
     return best_aod(
-        gather_aod(query, providers=providers, sources=sources, cache=cache, strict=strict)
+        gather_aod(query, providers=providers, sources=sources, data_dir=data_dir, strict=strict)
     )

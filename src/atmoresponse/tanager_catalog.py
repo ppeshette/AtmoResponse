@@ -10,7 +10,6 @@ import geopandas as gpd
 import requests
 from shapely.geometry import box, shape
 
-from .cache import CacheConfig
 from .catalog import SceneAssets, SceneQuery, SceneRecord
 
 PLANET_ROOT_CATALOG_URL = "https://www.planet.com/data/stac/catalog.json"
@@ -127,13 +126,11 @@ def build_index(
 
 def search_scenes(
     query: SceneQuery,
-    cache: CacheConfig | None = None,
     catalog_url: str = CATALOG_URL,
     session: requests.Session | None = None,
 ) -> Sequence[SceneRecord]:
     """Search the public Tanager catalog and return matching scene records."""
 
-    _ = cache
     index = build_index(catalog_url=catalog_url, session=session)
     if index.empty:
         return []
@@ -156,13 +153,9 @@ def search_scenes(
     return [_as_record(row) for _, row in index.loc[mask].iterrows()]
 
 
-def get_scene_assets(
-    scene: SceneRecord,
-    cache: CacheConfig | None = None,
-) -> SceneAssets:
+def get_scene_assets(scene: SceneRecord) -> SceneAssets:
     """Resolve Tanager scene assets for downstream extraction."""
 
-    _ = cache
     auxiliary = {
         name: href
         for name, href in scene.assets.items()

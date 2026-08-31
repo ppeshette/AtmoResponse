@@ -114,10 +114,8 @@ def test_geometry_pixel_list_selector():
 
 
 def test_scene_paths_names_every_product_deterministically(tmp_path):
-    from atmoresponse.cache import CacheConfig
-
     sid = "20250221T173656_2505212_021"
-    paths = emit.scene_paths(sid, CacheConfig(tmp_path))
+    paths = emit.scene_paths(sid, tmp_path)
 
     assert set(paths) == {"rfl", "rad", "obs", "mask"}
     assert paths["rfl"] == tmp_path / "scenes" / sid / f"EMIT_L2A_RFL_001_{sid}.nc"
