@@ -125,11 +125,13 @@ print(len(scene_records), "scenes in the window")
 # %% [markdown]
 # ## 3. The reference aerosol optical depth
 #
-# Realized Sensitivity needs an independent estimate of the true aerosol optical depth
-# at the scene's place and time, to compare against the value Planet's pipeline used.
-# AtmoResponse can resolve one from four sources: AERONET sun photometers, the VIIRS and
-# GOES satellite retrievals, and the MERRA-2 reanalysis. `resolve_aod` prefers a nearby
-# AERONET station and falls back through the others by distance and time offset.
+# Realized Sensitivity needs an external aerosol optical depth at the scene's place and
+# time, to compare against the value Planet's pipeline used. AtmoResponse resolves one
+# from four sources with different standing: AERONET sun photometers are a direct ground
+# measurement, VIIRS and GOES are satellite retrievals, and MERRA-2 is a reanalysis that
+# assimilates AERONET and MODIS, so it is a spatial extrapolation rather than an
+# independent value. `resolve_aod` prefers a nearby AERONET station and falls back
+# through the others by distance and time offset.
 #
 # AERONET is public, so the quick live check below source-limits the resolver to
 # AERONET and avoids credentialed downloads:
@@ -349,7 +351,7 @@ plt.show()
 # a wrong blue reflectance moves absorption between them. So one inversion produces both
 # a near-immune output and two of the most AOD-exposed outputs in this walkthrough, and
 # `a_dg(443)` alone runs far above the near-band index of section 7 on the same scene.
-# The figure shows `a_dg(443)`; the run prints all three.
+# The figure shows `a_dg(443)`, and the run prints all three.
 
 # %%
 cdom_scene_id = "20250123_185518_92_4001"  # the Malibu scene again, over water
@@ -370,7 +372,7 @@ cdom_mask = masks.admissible(cdom_scene_id, cdom_band_targets_nm, masks.tanager_
 # quantity. QAA v6's absorption magnitudes have a `1 / (xi - zeta)` singularity that
 # throws a handful of pixels to `|value|` around 100 where the denominator crosses zero.
 # Physical CDOM absorption here is well under 1 per metre, so `a_dg` and `a_ph` are
-# measured on `|value| < 2`; the slope `S` needs no such guard.
+# measured on `|value| < 2`. The slope `S` needs no such guard.
 
 # %%
 tanager_data.fetch_scene(cdom_scene_id, data_dir=DATA_DIR, records=scene_records)

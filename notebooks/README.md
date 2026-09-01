@@ -51,5 +51,5 @@ fig = plotting.sensitivity_figure(result)
 `recipes.as_algorithm(recipe_function)` adapts a fixed-band recipe to the `algorithm`
 argument, and a prepared SAM classifier is passed as `algorithm` directly. The `mask` is
 a `masks` helper (`tanager_water`, `tanager_vegetation`, `tanager_land`, `tanager_clear`)
-or any function `(sr_h5, aoi) -> bool array`; the package adds the cloud, nodata, and
-look-up-table-coverage gates itself.
+or any function `(sr_h5, aoi) -> bool array`, wrapped in `masks.admissible(...)`, which adds the
+cloud, nodata, finite-radiance, and look-up-table-coverage gates.

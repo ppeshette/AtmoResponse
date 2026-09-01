@@ -3,9 +3,8 @@
 AtmoResponse traces atmospheric-correction assumptions into Tanager reflectance algorithms.
 
 The repository is the public project package for the Planet Tanager Open Data Competition
-submission. It is being assembled as a release artifact: source code, report files, an annotated
-notebook, and the small bundled data assets belong here. Scene data, bulky derived products, the
-local data directory, and credentials do not.
+submission. It holds the source code, the report, an annotated notebook, and the small bundled data
+assets. Scene data, bulky derived products, the local data directory, and credentials do not.
 
 ## Repository Layout
 
@@ -14,7 +13,7 @@ local data directory, and credentials do not.
 | `src/atmoresponse/` | Installable Python package |
 | `src/atmoresponse/recipes/` | Published algorithm examples used by the submission |
 | `src/atmoresponse/masks.py` | Mask composition helpers for recipe outputs and scene validity gates |
-| `src/atmoresponse/assets/` | Bundled runtime data and reference files; provenance in its own README |
+| `src/atmoresponse/assets/` | Bundled runtime data and reference files, with provenance in its own README |
 | `tests/` | Offline smoke tests and formula fixtures |
 | `notebooks/` | Annotated executable walkthrough |
 | `report/` | Project summary, method notes, acquisition targets, and figure captions |
@@ -88,7 +87,7 @@ EMIT catalog searches use NASA CMR and can target either L2A reflectance or L1B 
 
 Downloads are cache-first: a scene, LUT archive, or reference file already present is reused rather
 than fetched again. They persist between runs and are not deleted automatically. Set
-`ATMORESPONSE_DATA` to place the data directory where you want it; unset, it defaults to
+`ATMORESPONSE_DATA` to place the data directory where you want it. Unset, it defaults to
 `~/atmoresponse_data`. Each download is written to a temporary file first, then moved into place
 when complete.
 
@@ -116,29 +115,27 @@ result = run_tanager(..., lut=store)
 `LUT_STORE_TANAGER` or `LUT_STORE_EMIT` at it instead, or pass it to `run_tanager` or `run_emit`
 as `lut=`. The Tanager and EMIT tables are Zenodo records
 [10.5281/zenodo.22210933](https://doi.org/10.5281/zenodo.22210933) and
-[10.5281/zenodo.22210726](https://doi.org/10.5281/zenodo.22210726); pass `url=` to fetch a
+[10.5281/zenodo.22210726](https://doi.org/10.5281/zenodo.22210726). Pass `url=` to fetch a
 different archive.
 
 The pipeline that generated the tables (the 6S forward-model driver and the shard store layout) is
 not part of this release. It may be published separately at a later date. The method itself is
 described in the report.
 
-## Current Scaffold
+## Package surface
 
-This scaffold defines the public import boundary while the full implementation is assembled.
-Shared scene models, a neutral hyperspectral cube, cache-first downloads into the local data
-directory, explicit Tanager and EMIT catalog access, source-neutral surface classification,
-Tanager and EMIT adapters, shipped-AOD summaries, AOD reference selection from AERONET, GOES,
-VIIRS, and MERRA-2, the LUT consumer layer, the LUT archive download helper (`download_lut`), per-sensor
-sensitivity runners (`run_tanager`, `run_emit`), the figure primitives, fixed-library SAM
-primitives, the bundled wildfire SAM library, and the RSI/WI, Wynne CI, QAA v6 CDOM, and AlOH
-example algorithms are implemented.
-GOES uses public NOAA buckets. VIIRS and MERRA-2 use Earthdata-backed live dependencies and
-credentials.
+The public API covers shared scene models, a neutral hyperspectral cube, cache-first downloads into
+the local data directory, Tanager and EMIT catalog access, source-neutral surface classification,
+Tanager and EMIT adapters, shipped-AOD summaries, AOD reference selection from AERONET, GOES, VIIRS,
+and MERRA-2, the LUT consumer layer, the LUT archive download helper (`download_lut`), the
+per-sensor sensitivity runners (`run_tanager`, `run_emit`), the figure primitives, fixed-library
+SAM primitives, the bundled wildfire SAM library, and the RSI, Sims and Gamon water-index, Wynne
+CI, QAA v6 CDOM, and AlOH example algorithms. GOES uses public NOAA buckets. VIIRS and MERRA-2 use
+Earthdata-backed live dependencies and credentials.
 
 ## Acknowledgements
 
 AI coding assistants were central to this work, principally Anthropic's Claude Code and OpenAI's
 Codex. They supported implementation, code review, and analysis throughout the project, and I am
-grateful for their availability as tools for research. I wrote, edited, or reviewed all code,  
+grateful for their availability as tools for research. I wrote, edited, or reviewed all code,
 comments, and prose published in this repository.
