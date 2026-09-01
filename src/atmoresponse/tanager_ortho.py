@@ -56,8 +56,12 @@ def _slice_cube(dataset, band_indices, aoi=None, rows=None, cols=None) -> np.nda
     band_indices = np.asarray(band_indices, dtype=int)
     if aoi is not None:
         r0, r1, c0, c1 = aoi
-        cube = np.asarray(dataset[band_indices, r0:r1, c0:c1], dtype="f8")
-        return np.moveaxis(cube, 0, -1)
+        # h5py fancy indexing needs strictly increasing, unique indices. A dense
+        # target list (a spectral library's own grid) maps several wavelengths to
+        # one Tanager band, so read the unique bands and re-expand to the request.
+        unique_bands, inverse = np.unique(band_indices, return_inverse=True)
+        block = np.asarray(dataset[unique_bands, r0:r1, c0:c1], dtype="f8")
+        return np.moveaxis(block[inverse], 0, -1)
 
     rows, cols = np.asarray(rows), np.asarray(cols)
     out = np.full((len(band_indices), rows.size), np.nan)

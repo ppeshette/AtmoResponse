@@ -4,8 +4,8 @@ AtmoResponse traces atmospheric-correction assumptions into Tanager reflectance 
 
 The repository is the public project package for the Planet Tanager Open Data Competition
 submission. It is being assembled as a release artifact: source code, report files, an annotated
-notebook, and lightweight reproducibility assets belong here. Scene data, bulky derived products,
-the local data directory, and credentials do not.
+notebook, and the small bundled data assets belong here. Scene data, bulky derived products, the
+local data directory, and credentials do not.
 
 ## Repository Layout
 
@@ -14,10 +14,10 @@ the local data directory, and credentials do not.
 | `src/atmoresponse/` | Installable Python package |
 | `src/atmoresponse/recipes/` | Published algorithm examples used by the submission |
 | `src/atmoresponse/masks.py` | Mask composition helpers for recipe outputs and scene validity gates |
+| `src/atmoresponse/assets/` | Bundled runtime data and reference files; provenance in its own README |
 | `tests/` | Offline smoke tests and formula fixtures |
 | `notebooks/` | Annotated executable walkthrough |
-| `report/` | Memo, method notes, acquisition targets, and figure captions |
-| `reproducibility_assets/` | Small manifests and source assets needed to rebuild examples |
+| `report/` | Project summary, method notes, acquisition targets, and figure captions |
 | `examples/` | Small runnable entry points and configuration examples |
 
 ## Install
@@ -46,6 +46,13 @@ Run the offline quickstart:
 
 ```bash
 python examples/quickstart.py
+```
+
+Run the annotated notebook (`notebooks/walkthrough.ipynb`):
+
+```bash
+python -m pip install "atmoresponse[notebook]"
+jupyter lab notebooks/walkthrough.ipynb
 ```
 
 ## Recipe API
@@ -133,5 +140,5 @@ credentials.
 
 AI coding assistants were central to this work, principally Anthropic's Claude Code and OpenAI's
 Codex. They supported implementation, code review, and analysis throughout the project, and I am
-grateful for their availability as tools for research. I wrote, edited, or reviewed all code published
-in this repository.
+grateful for their availability as tools for research. I wrote, edited, or reviewed all code,  
+comments, and prose published in this repository.

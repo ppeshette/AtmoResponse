@@ -49,10 +49,16 @@ test = [
   "pytest>=8",
   "matplotlib>=3.8",
 ]
+notebook = [
+  "atmoresponse[plot,live,geo]",
+  "jupytext>=1.16",
+  "jupyterlab>=4",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
+"atmoresponse.assets" = ["*.json", "*.md"]
 "atmoresponse.assets.endmembers" = ["*.json", "*.npz"]
 "atmoresponse.assets.lut" = ["*.json"]

@@ -1,0 +1,12 @@
+{
+  "package_version": "0.1.0",
+  "rajanpur_rsi_atmosphere_fraction": 0.09859906661145722,
+  "malibu_sam_flip_fraction": 0.04182022544770716,
+  "malibu_sam_flip_fraction_inside_perimeter": 0.05891369829240318,
+  "malibu_sam_flip_fraction_outside_perimeter": 0.024442870375415465,
+  "wynne_ci_atmosphere_fraction": 0.00334371739727399,
+  "malibu_qaa_s_atmosphere_fraction": 0.02658444599384764,
+  "malibu_qaa_a_dg_443_atmosphere_fraction": 0.5425003819131826,
+  "malibu_qaa_a_ph_443_atmosphere_fraction": 0.639116389554559,
+  "cuprite_aloh_atmosphere_fraction": 2.5692056446504803e-05
+}

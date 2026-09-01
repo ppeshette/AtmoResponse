@@ -23,13 +23,26 @@ REFERENCE_STYLES = {
 }
 
 # Distinct from coolwarm's own near-white zero centre. Without it a computed
-# near-zero delta and a masked or no-data pixel render identically.
+# near-zero delta and a masked or no-data pixel render identically. Used only when
+# a result carries no ``footprint``; with one, the two states below replace it.
 _NODATA_COLOR = "#999999"
 
-# A hue absent from coolwarm and from the usual sequential value-panel maps
-# (copper, Oranges, Blues, viridis all skip pure green), so the class-flip
-# overlay stays visible whatever the rest of the figure uses.
-_FLIP_COLOR = "lime"
+# Two no-data states, drawn as a map-panel underlay when ``result.footprint`` is set.
+_MASKED_COLOR = "#b8b6ad"    # inside the sensor swath, excluded by the analysis mask
+_OUTSIDE_COLOR = "#f2f1ee"   # outside the ortho frame, never imaged
+
+# Magenta for the class-flip overlay, near-black for the scoring-region outline:
+# both are absent from coolwarm's blue and red poles and from the sequential
+# value-panel maps, and they read as distinct from each other.
+_FLIP_COLOR = "#c2255c"
+_REGION_OUTLINE_COLOR = "#111111"
+
+_METRIC_ANCHORS = {
+    "lower left": (0.02, 0.02, "left", "bottom"),
+    "lower right": (0.98, 0.02, "right", "bottom"),
+    "upper left": (0.02, 0.98, "left", "top"),
+    "upper right": (0.98, 0.98, "right", "top"),
+}
 
 _CURVE_COLORS = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2"]
 
@@ -79,15 +92,57 @@ def sensitivity_curve_panel(ax, result, references=(), *, title="", unit=""):
            xlabel="assumed AOD550 (Realized Sensitivity marker: x)",
            ylabel="output minus reference-AOD output" + (f" ({unit})" if unit else ""))
     ax.grid(alpha=0.25)
-    ax.legend(fontsize=6, ncol=2, frameon=False, loc="best")
+    # Curves pass through the origin at the reference AOD and rise to the right,
+    # so the upper-left corner is the reliably empty one.
+    ax.legend(fontsize=6, ncol=1, loc="upper left", frameon=True, framealpha=0.9,
+              edgecolor="0.8")
     return ax
 
 
-def _nodata_cmap(name):
-    """A new colormap based on ``name`` with NaN drawn in :data:`_NODATA_COLOR`."""
+def _nodata_cmap(name, *, transparent_bad=False):
+    """A copy of colormap ``name`` with NaN drawn in :data:`_NODATA_COLOR`, or
+    fully transparent when a :func:`_map_background` underlay carries the no-data
+    states instead."""
     import matplotlib.pyplot as plt
 
-    return plt.get_cmap(name).with_extremes(bad=_NODATA_COLOR)
+    bad = (0.0, 0.0, 0.0, 0.0) if transparent_bad else _NODATA_COLOR
+    return plt.get_cmap(name).with_extremes(bad=bad)
+
+
+def _analyzed_map(result) -> np.ndarray:
+    out = np.zeros(result.shape, dtype=bool)
+    out[result.rows, result.cols] = True
+    return out
+
+
+def _map_background(ax, result, bbox) -> bool:
+    """Underlay for the map panels: outside the sensor swath in
+    :data:`_OUTSIDE_COLOR`, inside-but-masked-out in :data:`_MASKED_COLOR`,
+    analyzed pixels left for the data layer to paint. Returns whether it drew
+    (only when ``result.footprint`` is available)."""
+    from matplotlib.colors import ListedColormap
+
+    if result.footprint is None:
+        return False
+    r0, r1, c0, c1 = bbox
+    footprint = np.asarray(result.footprint, dtype=bool)[r0:r1, c0:c1]
+    analyzed = _analyzed_map(result)[r0:r1, c0:c1]
+    code = np.where(footprint & ~analyzed, 1.0, 0.0)          # 0 outside/analyzed, 1 masked
+    code[~footprint] = 0.0
+    ax.imshow(np.where(footprint, code, -1.0),
+              cmap=ListedColormap([_OUTSIDE_COLOR, _OUTSIDE_COLOR, _MASKED_COLOR]),
+              vmin=-1.0, vmax=1.0, interpolation="none")
+    return True
+
+
+def _outline_region(ax, region, bbox, *, color=_REGION_OUTLINE_COLOR, lw=1.2):
+    """Draw the boundary of a scene-shaped boolean ``region`` on a map panel as a
+    near-black line, distinct from the coolwarm poles and from the magenta
+    class-flip overlay."""
+    r0, r1, c0, c1 = bbox
+    sub = np.asarray(region, dtype=float)[r0:r1, c0:c1]
+    if sub.any() and not sub.all():
+        ax.contour(sub, levels=[0.5], colors=color, linewidths=lw)
 
 
 def _bbox(rows, cols, shape, pad=3):
@@ -107,7 +162,7 @@ def _bbox(rows, cols, shape, pad=3):
 
 
 def sensitivity_map_panel(ax, result, *, title="", unit="", show_class_changed=True,
-                          symlog=False, delta_vlim=None):
+                          symlog=False, delta_vlim=None, scoring_region=None):
     """Realized Sensitivity: the delta map cropped to a tight box around the
     AOI's own pixels, drawn coolwarm and centred on zero at the scene's own 1st
     and 99th percentile symmetric limits.
@@ -133,20 +188,21 @@ def sensitivity_map_panel(ax, result, *, title="", unit="", show_class_changed=T
     the panel switches to a sequential map over ``[lo, hi]`` so residual spatial
     structure stays legible. ``delta_vlim`` is ignored under ``symlog``.
     """
-    delta = result.delta_map()
-    r0, r1, c0, c1 = _bbox(result.rows, result.cols, delta.shape)
-    delta = delta[r0:r1, c0:c1]
+    bbox = _bbox(result.rows, result.cols, result.shape)
+    r0, r1, c0, c1 = bbox
+    delta = result.delta_map()[r0:r1, c0:c1]
     finite = delta[np.isfinite(delta)]
     limit = max(abs(v) for v in np.nanpercentile(finite, (1, 99))) if finite.size else 1e-12
     limit = limit or 1e-12
-    cmap = _nodata_cmap("coolwarm")
+    has_background = _map_background(ax, result, bbox)
+    cmap = _nodata_cmap("coolwarm", transparent_bad=has_background)
     if delta_vlim is not None and not symlog:
         lo, hi = float(delta_vlim[0]), float(delta_vlim[1])
         if lo < 0 < hi:
             norm = TwoSlopeNorm(vmin=lo, vcenter=0, vmax=hi)
         else:
             norm = Normalize(vmin=lo, vmax=hi)
-            cmap = _nodata_cmap("plasma")
+            cmap = _nodata_cmap("plasma", transparent_bad=has_background)
     elif symlog:
         abs_finite = np.abs(finite[finite != 0])
         linthresh = float(np.nanpercentile(abs_finite, 25)) if abs_finite.size else 1e-12
@@ -155,37 +211,46 @@ def sensitivity_map_panel(ax, result, *, title="", unit="", show_class_changed=T
     else:
         norm = TwoSlopeNorm(vmin=-limit, vcenter=0, vmax=limit)
     image = ax.imshow(delta, cmap=cmap, interpolation="none", norm=norm)
+    captions = []
     if show_class_changed and result.class_changed is not None:
         changed = result.class_changed_map()[r0:r1, c0:c1]
         fill = np.where(changed, 1.0, np.nan)
         ax.imshow(fill, cmap=ListedColormap([_FLIP_COLOR]), alpha=1.0, interpolation="none")
-        title = title or (f"{result.algorithm_name} Realized Sensitivity\n"
-                          f"{_FLIP_COLOR}: class changed")
+        captions.append("magenta: class changed")
+    if scoring_region is not None:
+        _outline_region(ax, scoring_region, bbox)
+        captions.append("black outline: scoring region")
+    if captions and not title:
+        title = f"{result.algorithm_name} Realized Sensitivity\n" + ", ".join(captions)
     ax.set(title=title or f"{result.algorithm_name} Realized Sensitivity")
     ax.set_axis_off()
     ax.figure.colorbar(image, ax=ax, fraction=0.046, pad=0.04,
-                       label="LUT at shipped AOD minus LUT at reference AOD"
+                       label="Δ output: shipped − reference AOD"
                              + (f" ({unit})" if unit else ""))
     return ax
 
 
-def sensitivity_value_panel(ax, result, values, *, title="", unit="", cmap="viridis"):
+def sensitivity_value_panel(ax, result, values, *, title="", unit="", cmap="viridis",
+                            scoring_region=None):
     """The absolute-output companion to :func:`sensitivity_map_panel`, so a delta
     has a scale to be read against. A delta of ``-0.1`` means something different
     on an output near ``0.3`` than on one near ``2.5``.
 
     ``values`` is any per-pixel array aligned with ``result.rows`` and
     ``result.cols``, typically ``result.at_shipped`` or ``result.at_reference``.
-    It is scattered onto the scene grid and cropped to the AOI bounding box. The
-    panel is not centred on zero, so it uses a plain sequential colormap.
+    It is scattered onto the scene grid and cropped to the valid-pixel bounding
+    box. The panel is not centred on zero, so it uses a plain sequential colormap.
     """
-    value_map = result.value_map(values)
-    r0, r1, c0, c1 = _bbox(result.rows, result.cols, value_map.shape)
-    value_map = value_map[r0:r1, c0:c1]
+    bbox = _bbox(result.rows, result.cols, result.shape)
+    r0, r1, c0, c1 = bbox
+    value_map = result.value_map(values)[r0:r1, c0:c1]
     finite = value_map[np.isfinite(value_map)]
     vmin, vmax = (np.nanpercentile(finite, (1, 99)) if finite.size else (0.0, 1.0))
-    image = ax.imshow(value_map, cmap=_nodata_cmap(cmap), interpolation="none",
-                      vmin=vmin, vmax=vmax)
+    has_background = _map_background(ax, result, bbox)
+    image = ax.imshow(value_map, cmap=_nodata_cmap(cmap, transparent_bad=has_background),
+                      interpolation="none", vmin=vmin, vmax=vmax)
+    if scoring_region is not None:
+        _outline_region(ax, scoring_region, bbox)
     ax.set(title=title or f"{result.algorithm_name} output")
     ax.set_axis_off()
     ax.figure.colorbar(image, ax=ax, fraction=0.046, pad=0.04, label=unit or "output")
@@ -239,11 +304,53 @@ def reconstruction_gap_panel(ax, gap_result, delta, *, unit="", title=""):
     return ax
 
 
+def _metric_lines(result, scoring_region=None):
+    """The figure badge text. A classifier reports the class-flip fraction only.
+    A continuous algorithm reports the atmosphere fraction (its coverage when
+    :func:`~atmoresponse.sensitivity.variance_fraction` calls the fraction
+    unreliable) plus the typical and tail magnitude of the delta. With a
+    ``scoring_region`` every line is given three ways: whole scene, inside, and
+    outside the region."""
+    from atmoresponse.sensitivity import variance_fraction
+
+    classifier = result.class_changed is not None and result.class_changed.size
+
+    def block(res, tag):
+        if classifier:
+            return [f"{tag}class flips: {res.class_changed.mean():.3g}"]
+        finite = res.delta[np.isfinite(res.delta)]
+        if not finite.size:
+            return [f"{tag}delta: no finite pixels"]
+        vf = variance_fraction(res.at_reference, res.delta)
+        frac = (f"{vf.atmosphere_fraction:.3g}" if vf.reliable
+                else f"n/a (coverage {vf.coverage:.2g})")
+        return [f"{tag}atmosphere fraction: {frac}",
+                f"{tag}median |Δ| {np.median(np.abs(finite)):.3g}   "
+                f"p95 |Δ| {np.percentile(np.abs(finite), 95):.3g}"]
+
+    if scoring_region is None:
+        return block(result, "")
+    region = np.asarray(scoring_region, dtype=bool)
+    return (block(result, "all  ")
+            + block(result.scored(region), "in   ")
+            + block(result.scored(~region), "out  "))
+
+
 def sensitivity_figure(result, *, references=(), title="", unit="", value_source="shipped",
-                       value_cmap="viridis", figsize=(20, 6), symlog=False, delta_vlim=None):
+                       value_cmap="viridis", figsize=(20, 6), symlog=False, delta_vlim=None,
+                       scoring_region=None, metric_loc="lower left"):
     """The standard single-algorithm three-panel figure: the Potential
     Sensitivity curves, the algorithm's absolute output at ``value_source``'s
     AOD, then the Realized Sensitivity map.
+
+    ``scoring_region`` is a scene-shaped boolean. When given, its boundary is
+    outlined on both map panels and the badge reports every metric three ways
+    (whole scene, inside, outside) so a ground-truth region can be compared
+    against the rest of the scene without it having driven the processing.
+
+    ``metric_loc`` places the badge: one of ``"lower left"`` (default),
+    ``"lower right"``, ``"upper left"``, ``"upper right"``, or an ``(x, y)`` pair
+    in Axes fraction. Move it per figure when the default corner is busy.
 
     The middle panel grounds the delta, since a delta of ``-0.1`` means something
     different on an output near ``0.3`` than on one near ``2.5``. The variance
@@ -264,8 +371,17 @@ def sensitivity_figure(result, *, references=(), title="", unit="", value_source
     figure, axes = plt.subplots(1, 3, figsize=figsize)
     sensitivity_curve_panel(axes[0], result, references, unit=unit)
     sensitivity_value_panel(axes[1], result, values, unit=unit, cmap=value_cmap,
-                            title=f"{result.algorithm_name} output at {value_source} AOD")
-    sensitivity_map_panel(axes[2], result, unit=unit, symlog=symlog, delta_vlim=delta_vlim)
+                            title=f"{result.algorithm_name} output at {value_source} AOD",
+                            scoring_region=scoring_region)
+    sensitivity_map_panel(axes[2], result, unit=unit, symlog=symlog, delta_vlim=delta_vlim,
+                          scoring_region=scoring_region)
+    if isinstance(metric_loc, str):
+        x, y, ha, va = _METRIC_ANCHORS[metric_loc]
+    else:
+        (x, y), ha, va = metric_loc, "left", "bottom"
+    axes[2].text(x, y, "\n".join(_metric_lines(result, scoring_region)),
+                 transform=axes[2].transAxes, ha=ha, va=va, fontsize=8, family="monospace",
+                 bbox=dict(boxstyle="round", facecolor="white", alpha=0.85, edgecolor="0.7"))
     if title:
         figure.suptitle(title)
     figure.tight_layout(rect=(0, 0, 1, 0.94) if title else None)

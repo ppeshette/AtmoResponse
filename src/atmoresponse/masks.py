@@ -9,7 +9,7 @@ import h5py
 import numpy as np
 
 from . import lut, tanager_ortho
-from .recipes import agriculture, water
+from .recipes import agriculture, land_mask, water
 
 
 def _as_bool_mask(mask, *, name: str = "mask") -> np.ndarray:
@@ -147,23 +147,25 @@ def tanager_vegetation(
     sr_h5: h5py.File,
     *,
     aoi=None,
-    savi_threshold: float = 0.25,
+    savi_threshold: float = land_mask.SAVI_CANOPY_MIN,
     screen_clear: bool = True,
 ) -> np.ndarray:
     """Canopy-presence candidates, optionally screened by Tanager quality masks.
 
-    Wraps :func:`atmoresponse.recipes.agriculture.canopy_present`: a
-    corroboration screen for where a canopy reflectance algorithm is meaningful,
-    not a land-cover product.
+    Wraps :func:`atmoresponse.recipes.land_mask.canopy_mask`: SAVI (Huete 1988)
+    and a Dawson and Curran (1998) red edge position must agree. A corroboration
+    screen for where a canopy reflectance algorithm is meaningful, not a
+    land-cover product.
     """
 
     aoi = _default_aoi(sr_h5, aoi, None, None)
-    wavelengths, reflectance = tanager_ortho.reflectance_at(
-        sr_h5,
-        [agriculture.CANOPY_RED_NM, *agriculture.CANOPY_RED_EDGE_NM, agriculture.CANOPY_NIR_NM],
-        aoi=aoi,
-    )
-    selected = agriculture.canopy_present(reflectance, wavelengths, savi_threshold=savi_threshold)
+    all_wavelengths = tanager_ortho.wavelengths_nm(sr_h5, "surface_reflectance")
+    lo, hi = land_mask.RED_EDGE_WINDOW_NM
+    window = all_wavelengths[(all_wavelengths >= lo) & (all_wavelengths <= hi)]
+    targets = np.unique(np.concatenate(
+        ([land_mask.CANOPY_RED_NM, land_mask.CANOPY_NIR_NM], window)))
+    wavelengths, reflectance = tanager_ortho.reflectance_at(sr_h5, targets, aoi=aoi)
+    selected = land_mask.canopy_mask(reflectance, wavelengths, savi_threshold=savi_threshold)
     if screen_clear:
         selected = combine_all(selected, tanager_clear(sr_h5, aoi=aoi))
     return selected

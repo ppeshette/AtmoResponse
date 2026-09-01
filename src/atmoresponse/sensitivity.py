@@ -388,6 +388,10 @@ class SensitivityResult:
     reference_aod: float
     unit: str
     algorithm_name: str
+    footprint: np.ndarray | None = None
+    """Scene-shaped boolean, ``True`` where the sensor imaged a pixel. Lets a
+    figure draw the ortho-frame padding and the masked-out swath as two states
+    rather than one grey. ``None`` when the run did not record it."""
 
     def value_map(self, values: np.ndarray) -> np.ndarray:
         """Scatter any per-pixel array aligned with ``rows`` and ``cols`` back onto
@@ -710,11 +714,19 @@ def run_tanager(
         shipped_aod = shipped_aod_block[valid]
         cwv_g_cm2 = cwv_block[valid]
 
+        r0, r1, c0, c1 = aoi
+        footprint = np.zeros(scene_shape, dtype=bool)
+        nodata_key = GRID + "nodata_pixels"
+        if nodata_key in sr:
+            footprint[r0:r1, c0:c1] = np.asarray(sr[nodata_key][r0:r1, c0:c1]) == 0
+        else:
+            footprint[r0:r1, c0:c1] = True
+
     acquisition = datetime.datetime.strptime(scene_id[:8], "%Y%m%d")
     if fit is not None:
         algorithm = fit(wl_nm, radiance)
 
-    return _run_from_arrays(
+    result = _run_from_arrays(
         algorithm, wl_nm, radiance, geometry, shipped_aod, cwv_g_cm2, aero_profile,
         reference_aod, acquisition, scene_shape, rows, cols,
         group_labels=group_labels, node_only=node_only, percentiles=percentiles,
@@ -722,6 +734,7 @@ def run_tanager(
         algorithm_name=algorithm_name, lut_root=_resolve_lut_root(lut, SHARD_ROOT_TANAGER),
         correct=correct, workers=workers, chunksize=chunksize,
     )
+    return replace(result, footprint=footprint)
 
 
 EmitMask = Callable[["h5py.File", tuple[int, int, int, int]], np.ndarray]
@@ -799,11 +812,17 @@ def run_emit(
     shipped_aod = shipped_aod_block[valid]
     cwv_g_cm2 = cwv_block[valid]
 
+    # EMIT has no single nodata plane, so the footprint is where the retrieval
+    # inputs are all finite.
+    footprint = np.zeros(scene_shape, dtype=bool)
+    footprint[r0:r1, c0:c1] = (np.isfinite(shipped_aod_block) & np.isfinite(cwv_block)
+                               & np.isfinite(radiance_block).all(axis=-1))
+
     acquisition = datetime.datetime.strptime(scene_id[:15], "%Y%m%dT%H%M%S")
     if fit is not None:
         algorithm = fit(wl_nm, radiance)
 
-    return _run_from_arrays(
+    result = _run_from_arrays(
         algorithm, wl_nm, radiance, geometry, shipped_aod, cwv_g_cm2, aero_profile,
         reference_aod, acquisition, scene_shape, rows, cols,
         group_labels=group_labels, node_only=node_only, percentiles=percentiles,
@@ -812,3 +831,4 @@ def run_emit(
         lut_axes=load_axes(sensor="emit"), correct=correct, workers=workers,
         chunksize=chunksize,
     )
+    return replace(result, footprint=footprint)

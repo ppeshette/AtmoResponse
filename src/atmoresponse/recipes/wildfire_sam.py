@@ -51,6 +51,17 @@ def _tuple(values) -> tuple[str, ...]:
     return tuple(str(value) for value in values)
 
 
+def load_palisades_fire_perimeter() -> np.ndarray:
+    """The January 2025 Palisades fire perimeter (WFIGS, public), rasterized onto
+    the Malibu Tanager scene ``20250123_185518_92_4001`` as a scene-shaped boolean.
+    Pass it as ``sensitivity_figure``'s ``scoring_region`` to compare the wildfire
+    SAM inside the burn against the rest of the scene."""
+
+    with files(_ASSET_PACKAGE).joinpath("palisades_fire_perimeter.npz").open("rb") as handle:
+        with np.load(handle, allow_pickle=False) as data:
+            return data["mask"].copy()
+
+
 def load_wildfire_sam_library() -> WildfireSamLibrary:
     """Load the bundled 400-1300 nm wildfire SAM endmember library."""
 

@@ -184,6 +184,18 @@ def test_radiance_at_finds_nearest_bands():
     np.testing.assert_array_equal(cube[2, 1], [0.0, 5.0])
 
 
+def test_radiance_at_dense_targets_with_duplicate_and_unsorted_bands():
+    # A spectral library's own grid: several targets snap to one band, out of order.
+    targets = [905.0, 495.0, 510.0, 610.0, 590.0]
+    with _fake_l1() as f:
+        wl, cube = radiance_at(f, targets, aoi=(0, ROWS, 0, COLS))
+        rows, cols = np.meshgrid(np.arange(ROWS), np.arange(COLS), indexing="ij")
+        _, scattered = radiance_at(f, targets, rows=rows.ravel(), cols=cols.ravel())
+
+    np.testing.assert_array_equal(wl, [900.0, 500.0, 500.0, 600.0, 600.0])
+    np.testing.assert_array_equal(scattered.reshape(ROWS, COLS, len(targets)), cube)
+
+
 def test_radiance_at_pixel_list_matches_aoi_block():
     with _fake_l1() as f:
         _, block = radiance_at(f, [600.0, 900.0], aoi=(0, ROWS, 0, COLS))

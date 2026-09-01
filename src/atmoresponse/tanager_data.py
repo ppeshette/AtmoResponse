@@ -7,8 +7,12 @@ from typing import Sequence
 
 import requests
 
+import h5py
+import numpy as np
+
 from .catalog import SceneAssets, SceneQuery, SceneRecord
 from .data import LocalSceneFiles, download_scene_files as _download_scene_files
+from . import tanager_ortho
 
 ROLE_FILENAMES = {
     "surface_reflectance": "{scene_id}_ortho_sr.h5",
@@ -67,3 +71,26 @@ def fetch_scene(
 
     assets = tanager_catalog.get_scene_assets(record)
     return download_scene_files(assets, data_dir=data_dir, session=session)
+
+
+def band_centers_nm(
+    scene_id: str,
+    data_dir: str | Path | None = None,
+    *,
+    lo: float | None = None,
+    hi: float | None = None,
+) -> np.ndarray:
+    """The scene's native Tanager L1 band centres in nm, optionally clipped to
+    ``[lo, hi]``. Pass these as ``run_tanager``'s ``band_targets_nm`` for an
+    algorithm that uses the full spectrum, such as a spectral-library classifier,
+    so every native band is carried through rather than resampled onto a coarser
+    grid. The scene must already be fetched."""
+
+    _, l1_path = tanager_ortho.scene_paths(scene_id, data_dir)
+    with h5py.File(l1_path, "r") as l1:
+        wl = tanager_ortho.wavelengths_nm(l1, "toa_radiance")
+    if lo is not None:
+        wl = wl[wl >= lo]
+    if hi is not None:
+        wl = wl[wl <= hi]
+    return wl

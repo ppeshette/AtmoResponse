@@ -32,6 +32,7 @@ def _write_synthetic_scene(data_root, scene_id, shipped_aod, cwv, radiance_by_pi
     with h5py.File(scene_dir / f"{scene_id}_ortho_sr.h5", "w") as sr:
         sr.create_dataset(GRID + "aerosol_optical_depth", data=np.asarray(shipped_aod).reshape(1, n))
         sr.create_dataset(GRID + "column_water_vapour", data=np.asarray(cwv).reshape(1, n))
+        sr.create_dataset(GRID + "nodata_pixels", data=np.zeros((1, n)))
     with h5py.File(scene_dir / f"{scene_id}_ortho_radiance.h5", "w") as l1:
         cube = np.moveaxis(np.asarray(radiance_by_pixel).reshape(1, n, 2), -1, 0)  # (band, row, col)
         ds = l1.create_dataset(GRID + "toa_radiance", data=cube)

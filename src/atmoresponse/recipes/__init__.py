@@ -1,8 +1,9 @@
 """Published algorithm examples used by AtmoResponse."""
 
-from . import agriculture, endmembers, sam, water, wildfire_sam
+from . import agriculture, endmembers, land_mask, sam, water, wildfire_sam
 from .adapters import as_algorithm
 from .agriculture import canopy_chlorophyll_rsi, canopy_present, vegetation_water_indices
+from .land_mask import canopy_mask, red_edge_position
 from .cdom import cdom_absorption
 from .cyanobacteria import cyanobacteria_index
 from .mineral import aloh_2200_depth
@@ -13,11 +14,14 @@ __all__ = [
     "aloh_2200_depth",
     "as_algorithm",
     "canopy_chlorophyll_rsi",
+    "canopy_mask",
     "canopy_present",
     "cdom_absorption",
     "cyanobacteria_index",
     "endmembers",
+    "land_mask",
     "mndwi",
+    "red_edge_position",
     "sam",
     "vegetation_water_indices",
     "water",

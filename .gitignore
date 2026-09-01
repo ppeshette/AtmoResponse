@@ -28,9 +28,15 @@ figures/generated/
 *.tiff
 *.npz
 
+# Bundled package data assets (the .npz rule above otherwise hides them)
+!src/atmoresponse/assets/endmembers/*.npz
+
 # Credentials
 .netrc
 _netrc
 *.pem
 *.key
 secrets.*
+
+# Notebook run artifact; the committed copy is src/atmoresponse/assets/figure_values.json
+notebooks/figure_values.json

@@ -79,6 +79,23 @@ def test_full_figure_renders(labeled):
     plt.close(fig)
 
 
+@pytest.mark.parametrize("labeled", [False, True])
+def test_full_figure_with_footprint_and_scoring_region(labeled):
+    from dataclasses import replace
+
+    base = _make_result(labeled=labeled)
+    footprint = np.zeros(SHAPE, dtype=bool)
+    footprint[:, 1:] = True                       # column 0 is outside the swath
+    result = replace(base, footprint=footprint)
+    region = np.zeros(SHAPE, dtype=bool)
+    region[0, :] = True                           # top row is the scored region
+    fig = plotting.sensitivity_figure(
+        result, unit="index", scoring_region=region, metric_loc="upper right")
+    badge = fig.axes[2].texts[-1].get_text()
+    assert "in " in badge and "out " in badge
+    plt.close(fig)
+
+
 @pytest.mark.parametrize("kwargs", [{"symlog": True}, {"delta_vlim": (-0.01, 0.05)},
                                     {"delta_vlim": (0.0, 0.05)}])
 def test_map_panel_scaling_modes(kwargs):

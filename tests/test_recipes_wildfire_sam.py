@@ -5,11 +5,18 @@ from atmoresponse.cube import HyperspectralCube
 from atmoresponse.recipes.wildfire_sam import (
     WILDFIRE_SAM_TARGET_LABEL,
     classify_wildfire_sam,
+    load_palisades_fire_perimeter,
     load_wildfire_sam_library,
     prepare_wildfire_sam,
     wildfire_sam_labels,
     wildfire_sam_score,
 )
+
+
+def test_load_palisades_fire_perimeter_is_a_scene_shaped_boolean():
+    mask = load_palisades_fire_perimeter()
+    assert mask.dtype == bool and mask.shape == (1063, 957)
+    assert 0.0 < mask.mean() < 1.0
 
 
 def test_load_wildfire_sam_library_exposes_public_metadata():
