@@ -10,6 +10,8 @@ The submission form links to this repository. The report documents are here unde
   list of ten targets.
 - `FIGURES.md` and `FIGURES.pdf`: captions and a rendered sheet for the four notebook figures.
 
+The two PDFs are generated from the Markdown and the figure PNGs by `render_pdf.py` and
+`render_figures_pdf.py` (`pip install "atmoresponse[report]"`).
+
 The four case-study figure values are in `src/atmoresponse/assets/figure_values.json`, which the
-annotated notebook writes. The Method Notes tables come from the fuller analysis behind the summary,
-each traceable to a committed run.
+annotated notebook writes. The Method Notes tables come from the fuller analysis behind the summary.

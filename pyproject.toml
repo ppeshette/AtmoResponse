@@ -45,6 +45,10 @@ geo = [
 plot = [
   "matplotlib>=3.8",
 ]
+report = [
+  "reportlab>=4",
+  "pillow>=10",
+]
 test = [
   "pytest>=8",
   "matplotlib>=3.8",
