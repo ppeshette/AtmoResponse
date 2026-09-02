@@ -15,25 +15,27 @@ case-study arc.
 | Dogliotti et al. (2015) turbidity | switching single-band reflectance | Paraná delta, June 26, 2025 | 0.61 percent |
 | Sims & Gamon (2003) WI_1240 | two-band water-absorption ratio | Rajanpur, January 14, 2025 | 1.06 percent |
 | Sims & Gamon (2003) WI_1530 | two-band water-absorption ratio | Rajanpur, January 14, 2025 | 2.09 percent |
-| QAA v6 CDOM slope (Lee et al. 2002) | absorption slope set by a blue-green ratio | Malibu, January 23, 2025 | 2.7 percent |
+| QAA v6 CDOM slope (Lee et al. 2002, Lee 2020) | absorption slope set by a blue-green ratio | Malibu, January 23, 2025 | 2.7 percent |
 | QAA v6 dissolved-and-detrital absorption at 443 nm | absorption magnitude through the u-to-a chain | Malibu, January 23, 2025 | 54 percent |
 | QAA v6 phytoplankton absorption at 443 nm | difference of two exposed absorption terms | Malibu, January 23, 2025 | 64 percent |
 | Nam et al. (2021) phycocyanin BRPD | raw two-band ratio, no baseline | Lake Ontario, July 4, 2025 | coverage 81 percent (guard-failed) |
 
 The three QAA rows are one inversion run three ways on the same scene: the slope, which a ratio
 sets, is close to unaffected, while the absorption magnitudes it separates are among the most
-exposed results in the inventory. The phycocyanin ratio diverges over dark water, where the variance
-fraction collapses toward one half and AtmoResponse returns coverage instead.
+exposed results in the inventory. The implementation follows the QAA_v6 step document as revised in
+2020 (Lee 2020), with the foundational algebra of Lee et al. (2002). The phycocyanin ratio diverges
+over dark water, where the variance fraction collapses toward one half and AtmoResponse returns
+coverage instead.
 
-## What a lookup-table correction reproduces
+## What a look-up-table correction reproduces
 
-Every figure in the project summary differences two lookup-table corrections rather than two ISOFIT runs. The
+Every figure in the project summary differences two look-up-table corrections rather than two ISOFIT runs. The
 table reproduces ISOFIT closely but not exactly, so the question is whether the aerosol-driven
 change an algorithm shows is larger than the table's own departure from the delivered product.
 
 A systematic offset between the two corrections cancels in a difference, because both aerosol
 evaluations carry it. What limits a sensitivity measurement is the part that varies from pixel to
-pixel: the residual scatter about a linear fit of the lookup-table result against the delivered one.
+pixel: the residual scatter about a linear fit of the look-up-table result against the delivered one.
 Applying each algorithm to Tanager's delivered surface reflectance at the same pixels measures it.
 
 | Algorithm | correlation with delivered ISOFIT | residual scatter as a fraction of the aerosol-driven change |
@@ -58,7 +60,7 @@ change and the scatter are the same order and the sensitivity is an upper bound.
 the Malibu SAM angle do not clear the gate. Their aerosol effects are about 15 times smaller than the
 pixel-level departure from ISOFIT, so those figures describe the sensitivity of the correction
 physics rather than verified predictions of how the delivered product would respond. Direction is
-unaffected because differencing two lookup-table corrections isolates the aerosol term, but the
+unaffected because differencing two look-up-table corrections isolates the aerosol term, but the
 numbers should not be transferred to ISOFIT quantitatively.
 
 ## Two limits on a Realized Sensitivity map
@@ -66,7 +68,7 @@ numbers should not be transferred to ISOFIT quantitatively.
 **Aerosols are retrieved per segment, not per pixel.** ISOFIT solves the aerosol field over spatial
 segments rather than at every pixel (the approach documented in the EMIT L2A ATBD, which uses the
 same retrieval), and on the Tanager delta scenes that field
-varies over roughly a kilometre. Neighbouring pixels in a Realized Sensitivity map therefore do not
+varies over roughly a kilometer. Neighbouring pixels in a Realized Sensitivity map therefore do not
 carry independent aerosol information, and the maps should be read for their spatial pattern rather
 than pixel by pixel.
 
@@ -77,7 +79,7 @@ affected pixel fraction is reported alongside each result.
 ## Wavelength dependence over water
 
 ACIX-Aqua (Pahlevan et al. 2021) and ACIX-III Aqua (Giardino et al. 2025) both locate the largest
-atmospheric-correction disagreement at the blue end, the latter at 443 nanometres across 239 PRISMA
+atmospheric-correction disagreement at the blue end, the latter at 443 nanometers across 239 PRISMA
 scenes. Tanager exhibits the same wavelength dependence, which is why the water diagnostics in the
 project summary rely on the green rather than the blue. Over water the shortwave infrared carries no
 water-leaving signal, so the aerosol constraint that a dark-target land correction draws from those
@@ -85,9 +87,9 @@ bands is unavailable there.
 
 ## References
 
-Works named in the algorithm inventory (Lee 2002, Dogliotti 2015, Sims and Gamon 2003, Nam 2021,
-and the Cyanobacteria Index sources) are cited in full in the project summary. The additional works
-named here:
+Works named in the algorithm inventory (Lee 2002, Lee 2020, Dogliotti 2015, Sims and Gamon 2003,
+Nam 2021, and the Cyanobacteria Index sources) are cited in full in the project summary. The
+additional works named here:
 
 - Green, R. O. et al. (2022). EMIT Level 2A Algorithm Theoretical Basis Document: Surface
   Reflectance and Mask. Jet Propulsion Laboratory, California Institute of Technology. Available

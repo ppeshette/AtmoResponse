@@ -1,10 +1,20 @@
 # AtmoResponse
 
-AtmoResponse traces atmospheric-correction assumptions into Tanager reflectance algorithms.
+![Realized Sensitivity of a wildfire burn classifier over the Palisades fire near Malibu, the change in classifier output when the atmospheric correction is repeated at an independent aerosol optical depth](.github/social-preview.png)
+
+AtmoResponse traces atmospheric-correction uncertainty into Tanager reflectance algorithms.
 
 The repository is the public project package for the Planet Tanager Open Data Competition
 submission. It holds the source code, the report, an annotated notebook, and the small bundled data
-assets. Scene data, bulky derived products, the local data directory, and credentials do not.
+assets. Scene data, bulky derived products, the local data directory, and credentials do not belong
+here.
+
+## Background
+
+AtmoResponse is the public release of a method developed and validated across a sustained 2026
+research effort on atmospheric-correction sensitivity in imaging spectroscopy. The look-up-table
+generation pipeline and the fuller algorithm inventory behind the Method Notes are part of that
+effort and may be released separately.
 
 ## Repository Layout
 

@@ -13,7 +13,7 @@ already used for the marine platforms: for each calendar month, how many of the 
 ten years carried at least one cloud-screened observation. Sites reporting in fewer than eight
 months of a typical year, or with fewer than 400 observation-days in ten years, were dropped. That
 leaves 435 sites. A stricter cut, sites reporting in ten or more months, leaves 393, and 200 of
-those sit within 100 kilometres of an operating radiosonde.
+those sit within 100 kilometers of an operating radiosonde.
 
 **Surface.** ESA WorldCover 2021 was sampled in a 40 km box around each site to describe what a
 scene there would contain. Credit went to exposed rock and soil, open shrub and grassland, and
@@ -50,14 +50,14 @@ Open Committee, so this is a recommendation to that committee rather than a fixe
 | **Subtropical montane and coastal** | Izaña, Tenerife | A 2,400 m volcanic observatory with a radiosonde 12 km away and open Atlantic water within the same swath, so one campaign serves both a mineral surface and a coastal water target. |
 | **Water-leaving radiance closure** | Chiba, Japan | A land AERONET site 7 km from the Kemigawa Offshore SeaPRISM platform and 48 km from a well-timed radiosonde. The rare place all three references sit together, which closes the loop on a water product. |
 | **Optically complex coastal water** | LISCO, Long Island Sound | A SeaPRISM platform reporting in all 12 months with a radiosonde 42 km away, over turbid, CDOM-rich coastal water. The nearest Tanager water scene today is 426 km away. |
-| **Clear-water reference basin** | AAOT, northern Adriatic | The canonical ocean-colour validation platform, reporting in all 12 months, radiosonde 85 km. Contrasts with LISCO as the clearer-water end of the coastal range, and the nearest Tanager water scene is 648 km away. |
+| **Clear-water reference basin** | AAOT, northern Adriatic | The canonical ocean-color validation platform, reporting in all 12 months, radiosonde 85 km. Contrasts with LISCO as the clearer-water end of the coastal range, and the nearest Tanager water scene is 648 km away. |
 
 ## Water targets
 
 For water the constraint is sharper, because AERONET-OC is the reference used here to close the loop
 on a water-leaving reflectance rather than on the aerosol alone. Six SeaPRISM platforms report
 reliably and sit near a radiosonde, and not one of them has a Tanager water scene within 238
-kilometres.
+kilometers.
 
 | platform | reliable months | radiosonde | nearest Tanager water scene |
 |---|---|---|---|
@@ -120,8 +120,8 @@ lacks.
 ## Caveats
 
 The surface fractions come from a 2021 annual land-cover map, so they describe persistent cover
-well, built, bare, cropland and water, and cannot speak to seasonal snow. The 40 km sampling box is
-larger than a single Tanager swath, so a scene placed at a site can favour or avoid any surface the
+(built, bare, cropland, water) well but cannot speak to seasonal snow. The 40 km sampling box is
+larger than a single Tanager swath, so a scene placed at a site can favor or avoid any surface the
 box reports. AERONET inversion products, which constrain the aerosol model itself, and MPLNET lidar
 co-location, which gives the aerosol vertical profile, were not scored and would refine the ranking.
 The commercial and impact priorities that the Open Committee weighs are not represented here at all.

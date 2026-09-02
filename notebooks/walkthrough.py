@@ -108,10 +108,10 @@ for scene in malibu_scenes:
     print(scene.scene_id, scene.acquired.date(), scene.collections)
 
 # %% [markdown]
-# The five examples below sit in five different places, so rather than search five
-# times the walkthrough does one wider search and reuses the records. `fetch_scene`
-# takes those records and downloads the surface reflectance and radiance for a scene on
-# first use.
+# The five examples below sit in four different places, since the Malibu fire scene
+# serves two of them. Rather than search once per example, the walkthrough does one
+# wider search and reuses the records. `fetch_scene` takes those records and downloads
+# the surface reflectance and radiance for a scene on first use.
 
 # %%
 scene_records = tanager_catalog.search_scenes(
@@ -216,7 +216,7 @@ plt.show()
 # ## 6. Walkthrough B, a classifier: wildfire ash and char near Malibu, California
 #
 # This scene was acquired days after the January 2025 fires on the coast west of Los
-# Angeles. The algorithm is a spectral angle mapper against a fixed library of ash,
+# Angeles. The algorithm is a Spectral Angle Mapper against a fixed library of ash,
 # char, vegetation, and soil endmembers. For a classifier the sensitivity question is
 # not how far a number moves but whether pixels cross a decision boundary: does the
 # aerosol assumption flip a pixel between burned and not burned?
@@ -344,7 +344,8 @@ plt.show()
 # ## 8. A spectral inversion on the same kind of water: CDOM off Malibu
 #
 # The same coastal water, corrected the same way, but a different kind of algorithm. QAA
-# v6 (Lee et al. 2002, updated 2014) is a full spectral inversion. It reports a
+# v6 (Lee et al. 2002, implemented from the QAA_v6 step document as revised in 2020) is a
+# full spectral inversion. It reports a
 # dissolved-and-detrital absorption `a_dg(443)`, a phytoplankton absorption `a_ph(443)`,
 # and the `a_dg` spectral slope `S`. The slope is a band ratio, so an error that shifts
 # the whole spectrum largely cancels in it. The two absorption magnitudes do not cancel:
@@ -371,7 +372,7 @@ cdom_mask = masks.admissible(cdom_scene_id, cdom_band_targets_nm, masks.tanager_
 # **The run.** One `run_tanager` call per output, since each is a separate per-pixel
 # quantity. QAA v6's absorption magnitudes have a `1 / (xi - zeta)` singularity that
 # throws a handful of pixels to `|value|` around 100 where the denominator crosses zero.
-# Physical CDOM absorption here is well under 1 per metre, so `a_dg` and `a_ph` are
+# Physical CDOM absorption here is well under 1 per meter, so `a_dg` and `a_ph` are
 # measured on `|value| < 2`. The slope `S` needs no such guard.
 
 # %%

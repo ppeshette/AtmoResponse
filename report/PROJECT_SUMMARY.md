@@ -4,7 +4,7 @@
 
 **AtmoResponse measures how far a spectral algorithm's output moves when Tanager's atmospheric correction
 is repeated at a different aerosol optical depth. Potential Sensitivity sweeps representative pixels across a
-plausible range of aerosol optical depth, characterising an algorithm's construction independently
+plausible range of aerosol optical depth, characterizing an algorithm's construction independently
 of any one scene. Realized Sensitivity corrects every pixel of a delivered scene twice, at the
 aerosol optical depth Tanager shipped and at an external value resolved from AERONET, VIIRS, GOES, or
 MERRA-2, then differences the two results. The readout depends on how the algorithm is built: the
@@ -24,7 +24,7 @@ optimal-estimation atmospheric correction that solves for surface reflectance an
 together, and users turn that reflectance into a quantitative result by applying an algorithm
 recipe. ISOFIT retrieves aerosol optical depth alongside reflectance. In the Malibu fire scene,
 the shipped aerosol optical depth rails near 0.001 across bright and dark pixels, against a VIIRS
-measurement of 0.028 taken the same day. At 441 nanometres, the per-pixel uncertainty is about
+measurement of 0.028 taken the same day. At 441 nanometers, the per-pixel uncertainty is about
 0.002 in both railed and non-railed conditions, so it does not diagnose this retrieval failure. A
 wrong aerosol optical depth moves different algorithms by amounts that differ by orders of magnitude,
 and nothing in the delivered product says by how much.
@@ -37,7 +37,7 @@ of wavelengths and their reflectances to a score or a label.
 **Potential Sensitivity** corrects representative pixels across a plausible aerosol-optical-depth
 range and re-applies the algorithm at each step. **Realized Sensitivity** corrects an area of
 interest twice, at Tanager's shipped aerosol optical depth and at an external value resolved from
-AERONET, VIIRS, GOES, or MERRA-2. Because it compares two lookup-table corrections rather than the
+AERONET, VIIRS, GOES, or MERRA-2. Because it compares two look-up-table corrections rather than the
 delivered ISOFIT result or ground truth, the result is sensitivity rather than error. MERRA-2 is a
 reanalysis that assimilates AERONET and MODIS, so it supplies a spatial extrapolation rather than an
 independent measurement.
@@ -67,8 +67,9 @@ Rajanpur, Pakistan, acquired January 14, 2025, is the strongest land-surface cas
 et al. (2016) estimate canopy chlorophyll with a narrow-band ratio, R815/R704, spanning the red
 edge. Across 211,873 canopy pixels, replacing the shipped aerosol value with a MERRA-2 value, the
 closest available reference, changes 9.86 percent of the algorithm's variance. The result is not a
-generic property of vegetation. It follows from the algorithm's construction: a smooth aerosol perturbation is poorly
-cancelled by a ratio whose bands sit on opposite sides of a steep spectral slope. The reconstruction
+generic property of vegetation. It follows from the algorithm's construction: a smooth aerosol
+perturbation is poorly canceled by a ratio whose bands sit on opposite sides of a steep spectral
+slope. The reconstruction
 check supports carrying this sensitivity to the delivered product, with correlation 0.997 and
 residual scatter 0.14 times the aerosol-driven change.
 
@@ -89,24 +90,24 @@ ISOFIT would move by the same amount.
 
 The NOAA Cyanobacteria Index (Wynne et al. 2008, with the derivative-invariance argument of Philpot
 1991 and the detection threshold of Stumpf et al. 2012) measures the curvature of the reflectance
-spectrum at 681 nanometres, its value there minus a baseline interpolated from 665 and 709
-nanometres. On a Tanager scene of western Lake Ontario from July 4, 2025 (Figure 3), carrying a
+spectrum at 681 nanometers, its value there minus a baseline interpolated from 665 and 709
+nanometers. On a Tanager scene of western Lake Ontario from July 4, 2025 (Figure 3), carrying a
 bloom along the Rochester shoreline under a shipped aerosol optical depth near 0.14 where GOES at 1
-kilometre and 2 minutes measures 0.28, its variance fraction corrected at the GOES value is 0.33
+kilometer and 2 minutes measures 0.28, its variance fraction corrected at the GOES value is 0.33
 percent. Subtracting that baseline cancels a smooth spectral shift.
 
-The QAA v6 semi-analytical inversion (Lee et al. 2002) is built from ratios and differences at
-once. It estimates total absorption from a reflectance ratio, then splits that absorption into a
-phytoplankton term and a coloured-dissolved-and-detrital term using a spectral slope that a
+The QAA v6 semi-analytical inversion (Lee et al. 2002, with the QAA_v6 update of Lee 2020) is built
+from ratios and differences at once. It estimates total absorption from a reflectance ratio, then splits that absorption into a
+phytoplankton term and a colored-dissolved-and-detrital term using a spectral slope that a
 blue-to-green reflectance ratio sets. On the Malibu fire scene (Figure 4), corrected at an AERONET value of
 0.041 against the shipped floor near 0.001, the parts of the retrieval behave oppositely. The
-dissolved-and-detrital absorption at 443 nanometres carries a variance fraction of 54 percent and
+dissolved-and-detrital absorption at 443 nanometers carries a variance fraction of 54 percent and
 the phytoplankton absorption at the same wavelength carries 64 percent. The spectral slope, set by a
 ratio, carries 2.7 percent. Almost no water pixels leave the inversion undefined. The reconstruction
-check separates the slope and the phytoplankton term from lookup-table scatter and places the
+check separates the slope and the phytoplankton term from look-up-table scatter and places the
 dissolved-and-detrital term at the edge of what it supports.
 
-Post-fire coastal water is a case where ash, coloured dissolved matter, and chlorophyll all absorb
+Post-fire coastal water is a case where ash, colored dissolved matter, and chlorophyll all absorb
 in the blue, and the retrieval meant to separate them lets the aerosol-assumption error account for more than
 half the variance of its dissolved-matter term. The Nam et al. (2021) phycocyanin band
 ratio, a raw quotient with no baseline, diverges outright over dark water. The variance check
@@ -123,7 +124,7 @@ further examples do not change that arc.
 ### 3.5 What the tool does not do
 
 AtmoResponse measures aerosol-assumption sensitivity, not ISOFIT's joint retrieval. A systematic
-lookup-table offset cancels when two lookup-table corrections are differenced. Pixel-to-pixel
+look-up-table offset cancels when two look-up-table corrections are differenced. Pixel-to-pixel
 residual scatter determines whether a result transfers to the delivered product. The check does not
 support the AlOH depth or the SAM angle, so those results describe correction physics rather than a
 quantitative prediction for delivered ISOFIT. The Method Notes report each reconstruction check.
@@ -140,7 +141,7 @@ look-up table also corrects for, and over water an AERONET-OC measurement of wat
 checks the reflectance itself rather than the aerosol alone. Of the 153 open scenes, 17 sit within
 a tight AERONET and radiosonde match, clustered at four places. No scene has a usable AERONET-OC
 match, and the nearest Tanager water scene to any reliably reporting SeaPRISM platform lies 238
-kilometres away.
+kilometers away.
 
 Those 17 scenes are also compositionally narrow. Classified against ESA WorldCover 2021, they
 average 37 percent built surface against 8 percent across the rest of the archive, and 0.3 percent
@@ -153,7 +154,7 @@ not at all.
 
 A defensible allocation of the released scenes pairs under-represented surfaces with the reference
 tier that verifies them. The candidate pool is substantial, with 393 AERONET land sites reporting in
-ten or more months of a typical year and 200 of those within 100 kilometres of an operating
+ten or more months of a typical year and 200 of those within 100 kilometers of an operating
 radiosonde. Ten targets span the gap, each schedulable year-round under Tanager's sun-elevation
 limits, each near an AERONET site, and most within reach of a radiosonde. Six carry the land
 surfaces the validatable archive lacks: Tamanrasset in the Algerian Sahara, Dalanzadgad in the
@@ -201,6 +202,8 @@ code, comments, and prose in this repository were written, edited, or reviewed b
 - Lee, Z., Carder, K. L., and Arnone, R. A. (2002). Deriving inherent optical properties from water
   color: a multiband quasi-analytical algorithm for optically deep waters. *Applied Optics*, 41(27),
   5755-5772. doi:10.1364/AO.41.005755
+- Lee, Z.-P. (2020). Steps and calculations of the Quasi-Analytical Algorithm (QAA_v6). International
+  Ocean Colour Coordinating Group. https://www.ioccg.org/groups/software.html
 - Miura, T., Huete, A. R., Yoshioka, H., and Holben, B. N. (2001). An error and sensitivity analysis
   of atmospheric resistant vegetation indices derived from dark target-based atmospheric correction.
   *Remote Sensing of Environment*, 78(3), 284-298. doi:10.1016/S0034-4257(01)00223-1
