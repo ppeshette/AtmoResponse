@@ -31,38 +31,24 @@ effort and may be released separately.
 
 ## Install
 
-Create the clean conda environment:
-
 ```bash
 conda env create -f environment.yml
 conda activate atmoresponse
 ```
 
-Install the package:
+That installs the package (editable) with everything: tests, live data access, the
+geo stack, plotting, the notebook, and the PDF tooling. Then:
 
 ```bash
-python -m pip install .
+python -m pytest                        # the offline suite
+python examples/quickstart.py           # offline demo
+jupyter lab notebooks/walkthrough.ipynb # the annotated walkthrough
 ```
 
-Development checks use:
-
-```bash
-python -m pip install -e ".[test,live,geo]"
-python -m pytest
-```
-
-Run the offline quickstart:
-
-```bash
-python examples/quickstart.py
-```
-
-Run the annotated notebook (`notebooks/walkthrough.ipynb`):
-
-```bash
-python -m pip install "atmoresponse[notebook]"
-jupyter lab notebooks/walkthrough.ipynb
-```
+Without conda, `pip install "atmoresponse[notebook]"` from a clone gives the notebook
+setup. Bare `pip install .` gives the minimal library; add `[live]`, `[geo]`, `[plot]`,
+`[report]`, or `[dev]` as needed. The geo stack (rasterio, geopandas) installs more
+reliably from conda than from pip.
 
 ## Recipe API
 

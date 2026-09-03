@@ -58,6 +58,9 @@ notebook = [
   "jupytext>=1.16",
   "jupyterlab>=4",
 ]
+dev = [
+  "atmoresponse[test,live,geo,plot,report,notebook]",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]

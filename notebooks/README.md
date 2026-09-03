@@ -2,17 +2,21 @@
 
 `walkthrough.ipynb` is the annotated walkthrough. `walkthrough.py` is its source in the
 jupytext percent format (`# %%` cell markers), kept so the notebook reviews cleanly as a
-diff. Install the notebook tooling and the run-time extras with:
+diff. The project conda environment (top-level README) has everything the notebook needs.
+Without it, install the notebook tooling and run-time extras with:
 
 ```bash
 python -m pip install "atmoresponse[notebook]"
 ```
 
-Regenerate the notebook from its source after editing `walkthrough.py`:
+After editing `walkthrough.py`, sync the change into the notebook. For a markdown-only
+edit this keeps the existing cell outputs:
 
 ```bash
-jupytext --to notebook notebooks/walkthrough.py
+jupytext --to notebook --update notebooks/walkthrough.py
 ```
+
+After a code-cell change, re-execute the notebook so its outputs match.
 
 ## Status: runs end to end against real scenes
 

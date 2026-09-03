@@ -6,4 +6,4 @@ dependencies:
   - rasterio>=1.3
   - shapely>=2.0
   - pip:
-      - -e .[test,live,geo]
+      - -e .[dev]
