@@ -3,6 +3,7 @@
 [![CI](https://github.com/ppeshette/AtmoResponse/actions/workflows/ci.yml/badge.svg)](https://github.com/ppeshette/AtmoResponse/actions/workflows/ci.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache_2.0-blue.svg)](LICENSE)
 ![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22308182.svg)](https://doi.org/10.5281/zenodo.22308182)
 
 <img src=".github/social-preview.png" width="640" alt="Realized Sensitivity of a wildfire burn classifier over the Palisades fire near Malibu, the change in classifier output when the atmospheric correction is repeated at an independent aerosol optical depth">
 

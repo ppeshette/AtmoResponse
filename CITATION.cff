@@ -16,6 +16,13 @@ url: "https://github.com/ppeshette/AtmoResponse"
 license: Apache-2.0
 version: 0.1.1
 date-released: "2026-09-04"
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.22308183
+    description: The version-specific DOI for v0.1.1.
+  - type: doi
+    value: 10.5281/zenodo.22308182
+    description: The concept DOI representing all versions.
 keywords:
   - atmospheric-correction
   - imaging-spectroscopy
