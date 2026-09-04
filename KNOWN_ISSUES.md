@@ -1,10 +1,6 @@
 # Known issues
 
-Package-robustness bugs found during the competition submission review. None changes a submitted
-number or figure: the annotated notebook filters or masks around each one, and the submitted values
-in `src/atmoresponse/assets/figure_values.json` are what the notebook produces. They are listed here
-because a user calling the affected functions directly, outside the notebook's guarded path, can
-hit wrong or confusing behaviour. Fix order below.
+Currently known package-robustness issues, none of which alter a documented number or figure.
 
 ## 1. `variance_fraction` does not drop non-finite pairs (P1)
 
@@ -67,3 +63,25 @@ Where it bites: a user running the recipe on unmasked reflectance.
 
 Fix: apply the same `<= FILL_LIMIT -> NaN` guard in `sample_linear` (or in `validate_spectra`), add
 a fixture with a fill pixel.
+
+## 5. An interrupted LUT download orphans its partial file and does not resume (P2)
+
+`src/atmoresponse/downloads.py`. `_stream_download` writes to a uniquely named `<name>.<uuid>.part`
+and renames it into place only once the transfer finishes. If the stream is interrupted, by a
+dropped connection or a keyboard interrupt, that `.part` file is left on disk and nothing removes
+it. A re-run of `download_lut` correctly sees no `shards/` and starts over, but it opens a new
+`.part` and re-downloads from the first byte, so the earlier partial file stays behind. Repeated
+interruptions leave several partial files, each up to a few hundred megabytes, under
+`lut/lut_store_<sensor>/`.
+
+Impact: Messy, not breaking. Correctness is unaffected and a completed download still caches and reuses
+normally.
+
+Where it bites: a user on a slow or unreliable connection fetching the roughly 240 MB Tanager
+archive. The leftover files only waste disk, and the missing resume means every interruption
+restarts the whole transfer.
+
+Fix: delete the `.part` file on any exception in `_stream_download`, with a `try` and
+`except BaseException` that calls `temporary.unlink(missing_ok=True)` and re-raises. Resume is a
+larger change: an HTTP Range request against the existing `.part`, guarded for a server that
+ignores Range or a file that changed upstream.

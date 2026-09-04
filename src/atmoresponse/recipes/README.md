@@ -1,8 +1,8 @@
 # Recipes
 
-Recipe modules hold the small algorithm examples used by the submission.
+Recipe modules hold the small algorithm examples that the report and notebook use.
 
-## Efficient Full-Spectrum Classifiers
+## Efficient full-spectrum classifiers
 
 For full-spectrum classifiers, avoid per-pixel setup inside the scoring loop. Read the needed band
 window as a block, prepare fixed libraries once for the scene wavelength grid, and run classifiers

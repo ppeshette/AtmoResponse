@@ -80,7 +80,7 @@ def band_centers_nm(
     lo: float | None = None,
     hi: float | None = None,
 ) -> np.ndarray:
-    """The scene's native Tanager L1 band centres in nm, optionally clipped to
+    """The scene's native Tanager L1 band centers in nm, optionally clipped to
     ``[lo, hi]``. Pass these as ``run_tanager``'s ``band_targets_nm`` for an
     algorithm that uses the full spectrum, such as a spectral-library classifier,
     so every native band is carried through rather than resampled onto a coarser

@@ -4,7 +4,7 @@ Sensitivity results that :mod:`atmoresponse.sensitivity` produces.
 Importing this module requires matplotlib (the ``plot`` optional dependency).
 It gives every :class:`~atmoresponse.sensitivity.SensitivityResult` one shared
 set of panels so that figures stay consistent from one algorithm to the next.
-:data:`REFERENCE_STYLES` fixes the colour and linestyle of each reference AOD
+:data:`REFERENCE_STYLES` fixes the color and linestyle of each reference AOD
 source, and :func:`sensitivity_figure` is the standard three panel layout.
 """
 import numpy as np
@@ -13,7 +13,7 @@ from matplotlib.ticker import MultipleLocator
 
 from atmoresponse.aod import expected_error
 
-# One reference-source to (colour, linestyle) mapping, used everywhere a
+# One reference-source to (color, linestyle) mapping, used everywhere a
 # reference AOD is drawn so the same source always renders the same way.
 REFERENCE_STYLES = {
     "aeronet": ("#24292f", "-"),
@@ -22,7 +22,7 @@ REFERENCE_STYLES = {
     "merra2": ("#57606a", "-."),
 }
 
-# Distinct from coolwarm's own near-white zero centre. Without it a computed
+# Distinct from coolwarm's own near-white zero center. Without it a computed
 # near-zero delta and a masked or no-data pixel render identically. Used only when
 # a result carries no ``footprint``; with one, the two states below replace it.
 _NODATA_COLOR = "#999999"
@@ -164,7 +164,7 @@ def _bbox(rows, cols, shape, pad=3):
 def sensitivity_map_panel(ax, result, *, title="", unit="", show_class_changed=True,
                           symlog=False, delta_vlim=None, scoring_region=None):
     """Realized Sensitivity: the delta map cropped to a tight box around the
-    AOI's own pixels, drawn coolwarm and centred on zero at the scene's own 1st
+    AOI's own pixels, drawn coolwarm and centered on zero at the scene's own 1st
     and 99th percentile symmetric limits.
 
     Where ``result.class_changed`` marks a label flip, a crisp per-pixel
@@ -183,8 +183,8 @@ def sensitivity_map_panel(ax, result, *, title="", unit="", show_class_changed=T
 
     ``delta_vlim=(lo, hi)`` overrides the automatic symmetric limits. A
     near-uniform one-sign delta, which a railed shipped AOD produces, otherwise
-    gets crushed into one saturated end by the zero-centred scale. When the given
-    range straddles zero the panel keeps zero-centred coolwarm. When it does not,
+    gets crushed into one saturated end by the zero-centered scale. When the given
+    range straddles zero the panel keeps zero-centered coolwarm. When it does not,
     the panel switches to a sequential map over ``[lo, hi]`` so residual spatial
     structure stays legible. ``delta_vlim`` is ignored under ``symlog``.
     """
@@ -239,7 +239,7 @@ def sensitivity_value_panel(ax, result, values, *, title="", unit="", cmap="viri
     ``values`` is any per-pixel array aligned with ``result.rows`` and
     ``result.cols``, typically ``result.at_shipped`` or ``result.at_reference``.
     It is scattered onto the scene grid and cropped to the valid-pixel bounding
-    box. The panel is not centred on zero, so it uses a plain sequential colormap.
+    box. The panel is not centered on zero, so it uses a plain sequential colormap.
     """
     bbox = _bbox(result.rows, result.cols, result.shape)
     r0, r1, c0, c1 = bbox

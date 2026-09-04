@@ -57,10 +57,10 @@ def _clean_cache():
 def sample(shard_root):
     """A query that lands exactly on one populated, solved cell of the store."""
     axes = lut.load_axes()
-    catalogue = lut.scan_shards(shard_root)
-    assert catalogue, "store scan found no shards"
+    catalog = lut.scan_shards(shard_root)
+    assert catalog, "store scan found no shards"
 
-    for _key_tuple, (_shard_id, path) in sorted(catalogue.items()):
+    for _key_tuple, (_shard_id, path) in sorted(catalog.items()):
         shard = lut.read_shard(path)
         ok = np.argwhere(shard["status"] == lut.STATUS_OK)
         if ok.size == 0:

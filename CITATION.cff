@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using this metadata."
+title: AtmoResponse
+abstract: >-
+  Open-source Python tools for tracing atmospheric-correction uncertainty into
+  Tanager and EMIT reflectance algorithms. AtmoResponse re-corrects a delivered
+  scene at an alternative aerosol optical depth and measures how far a reflectance
+  algorithm's output moves.
+type: software
+authors:
+  - family-names: Peshette
+    given-names: Paul
+    orcid: "https://orcid.org/0009-0005-1505-0582"
+repository-code: "https://github.com/ppeshette/AtmoResponse"
+url: "https://github.com/ppeshette/AtmoResponse"
+license: Apache-2.0
+version: 0.1.1
+date-released: "2026-09-04"
+keywords:
+  - atmospheric-correction
+  - imaging-spectroscopy
+  - hyperspectral
+  - remote-sensing
+  - uncertainty-quantification
+  - radiative-transfer
+  - tanager
+  - emit

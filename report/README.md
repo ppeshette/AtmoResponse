@@ -1,6 +1,6 @@
 # Report
 
-The submission form links to this repository. The report documents are here under `report/`:
+The report documents live under `report/`:
 
 - `PROJECT_SUMMARY.md` and `PROJECT_SUMMARY.pdf`: the project summary, results, and acquisition
   recommendation. Three pages of main text plus a references page.

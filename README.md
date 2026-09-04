@@ -4,28 +4,95 @@
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache_2.0-blue.svg)](LICENSE)
 ![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)
 
-![Realized Sensitivity of a wildfire burn classifier over the Palisades fire near Malibu, the change in classifier output when the atmospheric correction is repeated at an independent aerosol optical depth](.github/social-preview.png)
+<img src=".github/social-preview.png" width="640" alt="Realized Sensitivity of a wildfire burn classifier over the Palisades fire near Malibu, the change in classifier output when the atmospheric correction is repeated at an independent aerosol optical depth">
 
-AtmoResponse traces atmospheric-correction uncertainty into Tanager reflectance algorithms.
+**AtmoResponse is an open-source Python package for quantifying how atmospheric-correction
+uncertainty propagates into the algorithms that turn Tanager and EMIT reflectance products into
+scientific results.**
 
-The repository is the public project package for the Planet Tanager Open Data Competition
-submission. It holds the source code, the report, an annotated notebook, and the small bundled data
-assets. Scene data, bulky derived products, the local data directory, and credentials do not belong
-here.
+AtmoResponse runs scene-scale sensitivity analysis for Tanager and EMIT, resolving an external
+aerosol optical depth from AERONET, GOES, VIIRS, or MERRA-2 and providing a library of reusable
+spectral-algorithm recipes, masking and validity tools, and cache-first access to public catalogs
+and scene assets.
+Reconstructing reflectance at a different aerosol optical depth normally means a radiative-transfer
+calculation at every pixel. Precomputed 6S coefficient tables reduce that to a table lookup and a
+short algebra step, which is what makes a scene-scale comparison tractable.
 
-## Background
+## Capabilities
 
-AtmoResponse is the public release of a method developed and validated across a sustained 2026
-research effort on atmospheric-correction sensitivity in imaging spectroscopy. The look-up-table
-generation pipeline and the fuller algorithm inventory behind the Method Notes are part of that
-effort and may be released separately.
+- Tanager and EMIT scene discovery and access from public catalogs
+- Aerosol optical depth reference selection from AERONET, GOES, VIIRS, and MERRA-2
+- Look-up-table atmospheric correction at an assumed aerosol optical depth, one table per sensor
+- Scene-scale Potential and Realized Sensitivity workflows
+- Reusable reflectance-algorithm recipes and fixed spectral libraries
+- Cloud, nodata, look-up-table-coverage, and finite-input validity masking
+- Offline test suite, runnable examples, and an annotated notebook
 
-## Repository Layout
+## How it works
+
+AtmoResponse takes a user-supplied algorithm, a delivered scene, and an area of interest, where an
+algorithm is any function that maps a set of wavelengths and their reflectances to a score or a
+label. It computes two measures of aerosol-assumption sensitivity.
+
+Potential Sensitivity sweeps representative pixels across a plausible aerosol-optical-depth range
+and re-applies the algorithm at each step, characterizing its construction independently of any
+single scene. Realized Sensitivity corrects every pixel in the area of interest twice, once at the
+aerosol optical depth the mission's atmospheric correction assumed and once at an independent value
+from AERONET, GOES, VIIRS, or MERRA-2. The difference between the two corrections isolates the part
+of the algorithm's output that follows from the aerosol assumption rather than from the surface.
+
+Potential and Realized Sensitivity are computed entirely from look-up-table corrections. Each
+compares reflectance reconstructed at different aerosol optical depths, never a reconstruction
+against the delivered product or a measured reflectance. A systematic look-up-table bias cancels in
+that difference, so the result is a sensitivity, not an error. The readout matches how the algorithm
+is built: the fraction of pixels reassigned for a classifier, the fraction of the scene where the
+output stays defined for a ratio that can diverge, or the fraction of output variance the aerosol
+assumption drives for a continuous score.
+
+A precomputed table of 6S radiative-transfer solutions, spanning solar and view geometry, column
+water vapor, ozone, aerosol model, and aerosol optical depth, supplies the corrections at both
+aerosol values. Precomputing the table is a multi-day job. Once it exists, a full-scene comparison
+runs in minutes.
+
+For worked examples, the case-study figures, and a runnable end-to-end walkthrough, see
+[`report/`](report/) and [`notebooks/`](notebooks/).
+
+## Background and scope
+
+AtmoResponse grew out of a 2026 research effort into how uncertainty in atmospheric state, and in
+aerosol optical depth in particular, affects the downstream analysis of imaging-spectroscopy
+reflectance.
+
+Prior work has established the mechanism this package builds on. Miura et al. (2001) measured how
+residual atmospheric-correction error moves vegetation indices, and Bhatia et al. (2018) propagated
+atmospheric-parameter uncertainty through hyperspectral unmixing. In a 2026 study, Blessing and
+Giering characterized the band-to-band error covariance that atmospheric correction introduces and
+carried it into vegetation-index uncertainty. AtmoResponse operationalizes that line of work as a
+reusable, scene-scale workflow for two operational imaging spectrometers. Its contribution is the
+integration and reproducibility of that workflow.
+
+The delivered reflectance for both sensors comes from an optimal-estimation retrieval (Thompson et
+al. 2018) that solves for surface and atmospheric state together and reports the posterior
+uncertainty on that estimate. AtmoResponse asks a narrower and more applied question: given a
+delivered product and the aerosol optical depth it assumed, how much would the scientific
+interpretation change under another plausible aerosol state drawn from independent evidence? The two
+are complementary. AtmoResponse does not reproduce the retrieval's posterior covariance and does not
+set out to replace it.
+
+AtmoResponse was originally developed for the Planet Tanager Open Data Competition. The `v0.1.0` tag
+is the version submitted on August 31, 2026. The [project summary](report/PROJECT_SUMMARY.pdf) and the
+[annotated notebook](notebooks/walkthrough.ipynb) were the competition deliverables. This repository continues as the
+public project and software package. Full references are in [`REFERENCES.md`](REFERENCES.md).
+
+## Repository layout
+
+The repository holds source, tests, the report, the notebook, and small bundled assets. Scene data,
+bulky derived products, the local data directory, and credentials stay out of version control.
 
 | Path | Purpose |
 |---|---|
 | `src/atmoresponse/` | Installable Python package |
-| `src/atmoresponse/recipes/` | Published algorithm examples used by the submission |
+| `src/atmoresponse/recipes/` | Reflectance-algorithm examples exposed as recipes |
 | `src/atmoresponse/masks.py` | Mask composition helpers for recipe outputs and scene validity gates |
 | `src/atmoresponse/assets/` | Bundled runtime data and reference files, with provenance in its own README |
 | `tests/` | Offline smoke tests and formula fixtures |
@@ -50,9 +117,9 @@ jupyter lab notebooks/walkthrough.ipynb # the annotated walkthrough
 ```
 
 Without conda, `pip install "atmoresponse[notebook]"` from a clone gives the notebook
-setup. Bare `pip install .` gives the minimal library; add `[live]`, `[geo]`, `[plot]`,
-`[report]`, or `[dev]` as needed. The geo stack (rasterio, geopandas) installs more
-reliably from conda than from pip.
+setup. Bare `pip install .` gives the minimal library. Add `[live]`, `[geo]`, `[plot]`,
+`[report]`, or `[dev]` as needed. On Windows in particular, the geo stack (rasterio,
+geopandas) installs more reliably from conda than from pip.
 
 ## Recipe API
 
@@ -70,24 +137,24 @@ For repeated SAM scoring, prepare the fixed library once for a scene wavelength 
 read or atmospherically correct upstream.
 
 `atmoresponse.recipes.water` exposes MNDWI as a recipe. `atmoresponse.masks` combines recipe outputs
-with cloud, nodata, LUT-coverage, and finite-input validity gates.
+with cloud, nodata, look-up-table-coverage, and finite-input validity gates.
 
-## Data Access
+## Data access
 
-Default examples should run against public Planet STAC metadata and public Tanager scene assets.
-Some external aerosol references require user-owned credentials. Credentialed paths must fail with
-readable setup messages when credentials are absent.
+Default examples run against public Planet STAC metadata and public Tanager scene assets. Some
+external aerosol references require user-owned credentials. Credentialed paths fail with readable
+setup messages when credentials are absent.
 
 Bundled example spectra are limited to small fixed libraries with visible provenance. See `NOTICE`
 and the JSON manifests under `src/atmoresponse/assets/` for source credits and intended-use limits.
 
-AtmoResponse walks Planet's static Tanager STAC catalog directly. It does not require a STAC API
-server for catalog search.
-EMIT catalog searches use NASA CMR and can target either L2A reflectance or L1B radiance products.
+AtmoResponse walks Planet's static Tanager STAC catalog directly and does not require a STAC API
+server for catalog search. EMIT catalog searches use NASA CMR and can target either L2A reflectance
+or L1B radiance products.
 
-Downloads are cache-first: a scene, LUT archive, or reference file already present is reused rather
-than fetched again. They persist between runs and are not deleted automatically. Set
-`ATMORESPONSE_DATA` to place the data directory where you want it. Unset, it defaults to
+Downloads are cache-first: a scene, look-up-table archive, or reference file already present is
+reused rather than fetched again. Downloads persist between runs and are not deleted automatically.
+Set `ATMORESPONSE_DATA` to place the data directory where you want it. Unset, it defaults to
 `~/atmoresponse_data`. Each download is written to a temporary file first, then moved into place
 when complete.
 
@@ -95,10 +162,10 @@ when complete.
 
 Potential and Realized Sensitivity are computed against a precomputed look-up table of
 atmospheric-correction coefficients, one table per sensor. Each table holds the 6S
-radiative-transfer coefficients for a fixed grid of solar and view geometry, column water vapour,
+radiative-transfer coefficients for a fixed grid of solar and view geometry, column water vapor,
 ozone, aerosol model, aerosol optical depth, and sensor band. A reflectance retrieval at an assumed
-AOD is then a table lookup plus a short algebra step rather than a live radiative-transfer call,
-which is what makes a full-scene comparison at two AOD values tractable.
+aerosol optical depth is then a table lookup plus a short algebra step rather than a live
+radiative-transfer call, which is what makes a full-scene comparison at two values tractable.
 
 The package ships only the axis definitions, `src/atmoresponse/assets/lut/axes_tanager.json` and
 `axes_emit.json`. The coefficient store is large and is distributed separately as a per-sensor
@@ -118,24 +185,22 @@ as `lut=`. The Tanager and EMIT tables are Zenodo records
 [10.5281/zenodo.22210726](https://doi.org/10.5281/zenodo.22210726). Pass `url=` to fetch a
 different archive.
 
-The pipeline that generated the tables (the 6S forward-model driver and the shard store layout) is
-not part of this release. It may be published separately at a later date. The method itself is
-described in the report.
+The pipeline that generated the tables, the 6S forward-model driver and the shard store layout, is
+outside this release. The method is described in `report/METHOD_NOTES.md`.
 
 ## Package surface
 
-The public API covers shared scene models, a neutral hyperspectral cube, cache-first downloads into
-the local data directory, Tanager and EMIT catalog access, source-neutral surface classification,
-Tanager and EMIT adapters, shipped-AOD summaries, AOD reference selection from AERONET, GOES, VIIRS,
-and MERRA-2, the LUT consumer layer, the LUT archive download helper (`download_lut`), the
-per-sensor sensitivity runners (`run_tanager`, `run_emit`), the figure primitives, fixed-library
-SAM primitives, the bundled wildfire SAM library, and the RSI, Sims and Gamon water-index, Wynne
-CI, QAA v6 CDOM, and AlOH example algorithms. GOES uses public NOAA buckets. VIIRS and MERRA-2 use
-Earthdata-backed live dependencies and credentials.
+The public API covers shared scene models, a source-neutral hyperspectral cube, cache-first
+downloads into the local data directory, Tanager and EMIT catalog access, surface classification,
+and per-sensor adapters. On the atmospheric side it adds shipped-aerosol summaries, reference
+selection from AERONET, GOES, VIIRS, and MERRA-2, the look-up-table consumer layer, the archive
+download helper `download_lut`, and the per-sensor runners `run_tanager` and `run_emit`. On the
+algorithm side it adds the figure primitives, fixed-library SAM primitives, the bundled wildfire SAM
+library, and the RSI, Sims and Gamon water-index, Wynne Cyanobacteria Index, QAA v6 CDOM, and AlOH
+example algorithms. GOES reads public NOAA buckets. VIIRS and MERRA-2 use Earthdata-backed
+dependencies and credentials.
 
 ## Acknowledgements
 
-AI coding assistants were central to this work, principally Anthropic's Claude Code and OpenAI's
-Codex. They supported implementation, code review, and analysis throughout the project, and I am
-grateful for their availability as tools for research. I wrote, edited, or reviewed all code,
-comments, and prose published in this repository.
+Anthropic Claude Code and OpenAI Codex supported implementation, code review, and analysis
+throughout development. I wrote, edited, or reviewed all content published in this repository.

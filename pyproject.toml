@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "atmoresponse"
-version = "0.1.0"
-description = "Tools for tracing atmospheric-correction uncertainty into Tanager reflectance algorithms."
+dynamic = ["version"]
+description = "Tools for tracing atmospheric-correction uncertainty into Tanager and EMIT reflectance algorithms."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
@@ -61,6 +61,9 @@ notebook = [
 dev = [
   "atmoresponse[test,live,geo,plot,report,notebook]",
 ]
+
+[tool.setuptools.dynamic]
+version = { attr = "atmoresponse._version.__version__" }
 
 [tool.setuptools.packages.find]
 where = ["src"]

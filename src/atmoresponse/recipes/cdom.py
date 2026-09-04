@@ -8,7 +8,7 @@ deep waters", Applied Optics 41(27), 5755-5772. Constants and formulas follow th
 
 QAA is a spectral inversion rather than a blue-green band ratio. It uses the
 u to a to b_b relationships and the rrs(443)/rrs(555) ratio to split total
-absorption into a phytoplankton part and a coloured-dissolved-and-detrital part,
+absorption into a phytoplankton part and a colored-dissolved-and-detrital part,
 then extrapolates particulate backscatter spectrally. The dissolved-and-detrital
 absorption at 443 nm, ``a_dg(443)``, and its spectral slope ``S`` are the
 retrieval outputs of interest for atmospheric sensitivity, because a wrong blue
