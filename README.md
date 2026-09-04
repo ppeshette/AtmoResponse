@@ -43,8 +43,10 @@ of the algorithm's output that follows from the aerosol assumption rather than f
 
 Potential and Realized Sensitivity are computed entirely from look-up-table corrections. Each
 compares reflectance reconstructed at different aerosol optical depths, never a reconstruction
-against the delivered product or a measured reflectance. A systematic look-up-table bias cancels in
-that difference, so the result is a sensitivity, not an error. The readout matches how the algorithm
+against the delivered product or a measured reflectance. A look-up-table bias common to both
+corrections cancels in that difference, so the result is a sensitivity, not an error. An
+AOD-dependent bias, such as the table's own interpolation error, does not. The readout matches how
+the algorithm
 is built: the fraction of pixels reassigned for a classifier, the fraction of the scene where the
 output stays defined for a ratio that can diverge, or the fraction of output variance the aerosol
 assumption drives for a continuous score.
